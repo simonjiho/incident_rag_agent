@@ -1,0 +1,92 @@
+{
+  "auth-service": {
+    "status": "degraded",
+    "cpu_base": 78.0,
+    "memory_base": 61.0,
+    "alerts": ["p95 latency 2.4s (threshold 1.0s)", "connection pool 92% used"]
+  },
+  "web-01": {
+    "status": "healthy",
+    "cpu_base": 34.0,
+    "memory_base": 48.0,
+    "alerts": []
+  },
+  "payments-service": {
+    "status": "degraded",
+    "cpu_base": 91.0,
+    "memory_base": 55.0,
+    "alerts": ["CPU 91% (threshold 80%)", "payments-service-3 instance responding slow"]
+  },
+  "cache-service": {
+    "status": "degraded",
+    "cpu_base": 42.0,
+    "memory_base": 89.0,
+    "alerts": ["memory usage climbing steadily over 6h", "heap near limit"]
+  },
+  "gateway-service": {
+    "status": "degraded",
+    "cpu_base": 30.0,
+    "memory_base": 45.0,
+    "alerts": ["upstream timeout to payments-service (504)", "network packet loss 3%"]
+  },
+  "log-service": {
+    "status": "degraded",
+    "cpu_base": 20.0,
+    "memory_base": 35.0,
+    "alerts": ["disk usage 95% on /var/log", "disk space low"]
+  },
+  "ledger-service": {
+    "status": "degraded",
+    "cpu_base": 22.0,
+    "memory_base": 52.0,
+    "alerts": ["Lock wait timeout exceeded on ledger_entries (blocked sessions: 37)", "write requests stuck behind a long-running transaction"]
+  },
+  "portal-service": {
+    "status": "down",
+    "cpu_base": 11.0,
+    "memory_base": 37.0,
+    "alerts": ["TLS cert for portal.example.com expired at 00:00 UTC", "handshake failure rate 100% on port 443"]
+  },
+  "search-service": {
+    "status": "degraded",
+    "cpu_base": 18.0,
+    "memory_base": 41.0,
+    "alerts": ["getaddrinfo ENOTFOUND inventory.internal from 12/12 pods", "upstream host lookups failing; cached connections still serving"]
+  },
+  "notification-service": {
+    "status": "degraded",
+    "cpu_base": 15.0,
+    "memory_base": 44.0,
+    "alerts": ["consumer lag 480k messages on order-events topic", "oldest unprocessed message is 23 min old"]
+  },
+  "shipping-service": {
+    "status": "degraded",
+    "cpu_base": 21.0,
+    "memory_base": 39.0,
+    "alerts": ["carrier API returned HTTP 429 (daily quota exhausted)", "retries piling up, outbound call volume 3x normal"]
+  },
+  "invoice-service": {
+    "status": "degraded",
+    "cpu_base": 6.0,
+    "memory_base": 31.0,
+    "alerts": ["CrashLoopBackOff after rollout v2.31: PAYMENT_API_URL is empty", "readiness probe failed on all 4 replicas"]
+  },
+  "inventory-service": {
+    "status": "degraded",
+    "cpu_base": 27.0,
+    "memory_base": 58.0,
+    "alerts": ["thread pool 'order-exec' 100% busy, task queue 200/200", "503s from /health while CPU stays low"]
+  },
+  "reporting-service": {
+    "status": "degraded",
+    "cpu_base": 33.0,
+    "memory_base": 62.0,
+    "alerts": ["read replica db-ro-2 is 17 minutes behind the primary", "dashboards showing stale rows after the 14:05 bulk update"]
+  },
+  "recommend-service": {
+    "status": "degraded",
+    "cpu_base": 46.0,
+    "memory_base": 94.0,
+    "alerts": ["pod restarted 9 times in 3h: reason OOMKilled, exit code 137", "RSS growing ~120MB/h since last deploy"]
+  }
+}

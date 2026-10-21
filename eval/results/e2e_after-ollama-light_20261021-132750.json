@@ -1,0 +1,475 @@
+{
+  "kind": "e2e",
+  "label": "after-ollama-light",
+  "created": "20261021-132750",
+  "base_url": "http://127.0.0.1:8100",
+  "health": {
+    "status": "ok",
+    "instance_id": 4490857744,
+    "creation_count": 1,
+    "supervisor_version": "v2",
+    "llm_backend": "ollama",
+    "fast_llm": "ollama:qwen3:0.6b",
+    "quality_llm": "ollama:qwen3:0.6b",
+    "runbook_selector": "hybrid",
+    "rag_min_score": 0.52
+  },
+  "summary": {
+    "cases": 12,
+    "errors": 0,
+    "mean_recall": 0.958,
+    "micro_recall": 0.941,
+    "hits": 16,
+    "expected_total": 17,
+    "hits_base_systems": "5/6",
+    "hits_new_systems": "11/11",
+    "exact_rate": 0.917,
+    "pair_accuracy": 0.941,
+    "extra_runbooks": 1,
+    "latency_mean_s": 16.302,
+    "latency_median_s": 15.386,
+    "latency_max_s": 31.229,
+    "cost_usd_total": 0.277566,
+    "retries_total": 1,
+    "validation_attempts_mean": 3,
+    "replan_rate": 0.0
+  },
+  "cases": [
+    {
+      "id": "e01",
+      "expected": {
+        "auth-service": "high-latency"
+      },
+      "read": [
+        "high-latency"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "auth-service": true
+      },
+      "latency_s": 13.882,
+      "cost_usd": 0.017541,
+      "retry_count": 1,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "auth-service",
+          "incident_type": "high-latency",
+          "method": "hybrid",
+          "score": 0.6292,
+          "fallback": false
+        }
+      ],
+      "reply": "1. get_monitoring_status로 p95 지연 시간과 커넥션 풀 사용률을 확인한다.  \n2. 커넥션 풀 사용률이 90%를 넘으면 풀 크기를 늘리거나 느린 쿼리/외부 호출에 타임아웃을 건다.  \n3. 지연이 특정 리전/인스턴스에 몰려 있으면 해당 인스턴스를 로드밸런서에서 일시 제외한다."
+    },
+    {
+      "id": "e02",
+      "expected": {
+        "payments-service": "cpu-spike"
+      },
+      "read": [
+        "cpu-spike"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "payments-service": true
+      },
+      "latency_s": 13.362,
+      "cost_usd": 0.017755,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "payments-service",
+          "incident_type": "cpu-spike",
+          "method": "hybrid",
+          "score": 0.6156,
+          "fallback": false
+        }
+      ],
+      "reply": "1. 모니터링 payments-service: CPU 98.2%, 알림 'CPU 91% (threshold 80%)', 요청량 증가 없음  \n2. 패턴 분석: 특정 요청 패턴 없음, CPU 급증 대응 절차 적용  \n3. CPU 90% 이상으로 인해 인스턴스를 오토스케일링 그룹으로 분산시킵니다."
+    },
+    {
+      "id": "e03",
+      "expected": {
+        "cache-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "disk-full",
+        "network-timeout"
+      ],
+      "hits": 1,
+      "recall": 0.5,
+      "exact": false,
+      "extra": [
+        "disk-full"
+      ],
+      "pairs_ok": 1,
+      "system_hits": {
+        "cache-service": false,
+        "gateway-service": true
+      },
+      "latency_s": 31.229,
+      "cost_usd": 0.032234,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "cache-service",
+          "incident_type": "disk-full",
+          "method": "hybrid",
+          "score": 0.6052,
+          "fallback": false
+        },
+        {
+          "system": "gateway-service",
+          "incident_type": "network-timeout",
+          "method": "hybrid",
+          "score": 0.6199,
+          "fallback": false
+        }
+      ],
+      "reply": "1. cache-service: CPU 43.7%, 메모리 89.8%, 알림 2건 ['memory usage climbing steadily over 6h', 'heap near limit']  \n2. gateway-service: CPU 33.9%, 메모리 47.0%, 알림 2건 ['upstream timeout to payments-service (504)', 'network packet loss 3%']  \n3. runbook 발췌 (적용 시스템: cache-service):  \n# Runbook: 디스크 용량 부족 대응 절차  \n- 디스크 사용률 90% 이상 확인 및 임시 조치로 공간 확보  \n- 로그/임시 파일/백업 삭제 및 디스크 공간 남은 확인  \n- 프로세스 로그 쌓임 방지 및 디스크 사용률 알림 재검토  \n\n1) cache-service: CPU 43.7%, 메모리 89.8%, 알림 2건 ['memory usage climbing steadily over 6h', 'heap near limit']  \n2) gateway-service: CPU 33.9%, 메모리 47.0%, 알림 2건 ['upstream timeout to payments-service (504)', 'network packet loss 3%']  \n3) runbook 발췌 (적용 시스템: gateway-service):  \n# Runbook: 네트워크 타임아웃 대응 절차  \n- 서비스 간 호출에서 타임아웃 발생 확인  \n- DNS 실패/방화벽 변경/로드밸런서 헬스체크 실패 사항 점검  \n- 특정 리전/가용영역에서만 발생한 타임아웃 방지  \n- 429 응답으로 처리되지 않음 시 2차 피해 방지 조치"
+    },
+    {
+      "id": "e04",
+      "expected": {
+        "log-service": "disk-full"
+      },
+      "read": [
+        "disk-full"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "log-service": true
+      },
+      "latency_s": 17.249,
+      "cost_usd": 0.020355,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "log-service",
+          "incident_type": "disk-full",
+          "method": "hybrid",
+          "score": 0.6142,
+          "fallback": false
+        }
+      ],
+      "reply": "1) 모니터링 log-service: 상태=degraded, CPU 18.4%, 메모리 34.2%, 알림 2건 ['disk usage 95% on /var/log', 'disk space low']  \n2) /var/log, /tmp, 컨테이너 overlay 등의 디렉터리 사용량 증가 및 inode 100% 사용률 확인  \n3) `df -i`에서 inode 100% 이상 사용률 확인 후 임시 조치 (예: 파일 삭제, 로그 레벨 낮춤)  \n4) 쿠버네티스에서 `Evicted: ephemeral-storage` 상태로 파드가 쫓겨난 상태 확인  \n5) 정상화 후 디스크 사용률 알림 정책 재검토 및 조정  \n\n이 절차는 log-service의 디스크 사용률 문제를 해결하기 위한 구조적 조치입니다."
+    },
+    {
+      "id": "e05",
+      "expected": {
+        "ledger-service": "db-lock"
+      },
+      "read": [
+        "db-lock"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "ledger-service": true
+      },
+      "latency_s": 13.893,
+      "cost_usd": 0.01907,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "ledger-service",
+          "incident_type": "db-lock",
+          "method": "hybrid",
+          "score": 0.7055,
+          "fallback": false
+        }
+      ],
+      "reply": "1. `get_monitoring_status`으로 DB 응답 상태 및 쓰기 요청 대기열 확인  \n2. `pg_stat_activity` 또는 `SHOW ENGINE INNODB STATUS`으로 락 대기 및 대기 세션 체인 확인  \n3. 오래 열린 `idle in transaction` 또는 끝나지 않는 배치 UPDATE는 담당자 확인 후 `KILL` 또는 `pg_terminate_backend`로 종료  \n4. 진행 중인 DDL 또는 마이그레이션은 메타데이터 락을 잡고 대기 시간 조정  \n5. 정상화 후 트랜잭션 쿼리 수정 및 락 대기 시간 설정  \n\n이전 검증 사유: 응답이 너무 짧습니다(382자, 최소 30자). 절차를 1) 2) 3) 번호로 구체적으로 설명하세요."
+    },
+    {
+      "id": "e06",
+      "expected": {
+        "portal-service": "cert-expiry"
+      },
+      "read": [
+        "cert-expiry"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "portal-service": true
+      },
+      "latency_s": 10.034,
+      "cost_usd": 0.017976,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "portal-service",
+          "incident_type": "cert-expiry",
+          "method": "hybrid",
+          "score": 0.6908,
+          "fallback": false
+        }
+      ],
+      "reply": "1. 모니터링 portal-service: 상태=down, CPU 13.3%, 메모리 38.2%, 알림 2건 ['TLS cert for portal.example.com expired at 00:00 UTC', 'handshake failure rate 100% on port 443']  \n2. 인증서 만료일 확인 및 체인 중간 인증서 확인  \n3. 새 인증서 발급/갱신 또는 계층 교체 (인증서 계층: 로드밸런서, 인그레스, 서비스 메시, 내부 mTLS)  \n4. ACME/ cert-manager 갱신 로그 확인 및 문제 해결  \n5. 정상화 후 인증서 인벤토리 점검 및 알림 등록."
+    },
+    {
+      "id": "e07",
+      "expected": {
+        "search-service": "dns-failure",
+        "notification-service": "queue-backlog"
+      },
+      "read": [
+        "dns-failure",
+        "queue-backlog"
+      ],
+      "hits": 2,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 2,
+      "system_hits": {
+        "search-service": true,
+        "notification-service": true
+      },
+      "latency_s": 16.534,
+      "cost_usd": 0.028697,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "search-service",
+          "incident_type": "dns-failure",
+          "method": "hybrid",
+          "score": 0.557,
+          "fallback": false
+        },
+        {
+          "system": "notification-service",
+          "incident_type": "queue-backlog",
+          "method": "hybrid",
+          "score": 0.6604,
+          "fallback": false
+        }
+      ],
+      "reply": "1) 모니터링 search-service: 상태=degraded, CPU 22.5%, 메모리 43.2%, 알림 2건 ['getaddrinfo ENOTFOUND inventory.internal from 12/12 pods', 'upstream host lookups failing; cached connections still serving']  \n2) 모니터링 notification-service: 상태=degraded, CPU 13.7%, 메모리 43.4%, 알림 2건 ['consumer lag 480k messages on order-events topic', 'oldest unprocessed message is 23 min old']  \n3) runbook 발췌 (적용 시스템: notification-service):  \n# Runbook: 큐 적체(Queue Backlog) 대응 절차  \n\n## 증상  \n- 메시지 큐의 consumer lag, oldest message age, 유입/소비 속도가 늘어남  \n- Kafka 컨슈머 그룹 리밸런싱, 파티션 병렬, poison message 처리 실패  \n- DLQ 유입, API 응답 지연, 컨슈머 CPU/메모리 낮음  \n\n## 조치 절차  \n1. 큐 지표로 consumer lag, oldest message age, 유입/소비 속도 확인  \n2. 죽은 인스턴스 재기동, 소비 속도 불균형 파티션 능력 강화  \n3. poison message 처리 실패 시 DLQ 격리 및 처리 시간 분석  \n4. 응답 지연 절차 적용 및 알림 설정 추가"
+    },
+    {
+      "id": "e08",
+      "expected": {
+        "shipping-service": "rate-limit"
+      },
+      "read": [
+        "rate-limit"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "shipping-service": true
+      },
+      "latency_s": 16.567,
+      "cost_usd": 0.019469,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "shipping-service",
+          "incident_type": "rate-limit",
+          "method": "hybrid",
+          "score": 0.6672,
+          "fallback": false
+        }
+      ],
+      "reply": "1. 모니터링 shipping-service: 상태=degraded, CPU 18.0%, 메모리 37.5%, 알림 2건 ['carrier API returned HTTP 429 (daily quota exhausted)', 'retries piling up, outbound call volume 3x normal']  \n2. 제한을 건 쪽이 외부 API인지 우리 게이트웨이인지 구분하고, 외부라면 남은 쿼터와 초기화 시각(`Retry-After`)을 확인한다.  \n3. 재시도 폭주(retry storm)가 있으면 지수 백오프와 지터를 적용하고 불필요한 재시도를 즉시 끈다.  \n4. 급한 경우 쿼터 상향을 요청하거나 큐잉으로 요청 속도를 낮춰 호출량을 평탄화한다.  \n5. 정상화 후 호출량 급증을 일으킨 배치/캠페인을 확인하고, 클라이언트별 쿼터와 사용량 알림을 재설정한다."
+    },
+    {
+      "id": "e09",
+      "expected": {
+        "invoice-service": "config-error"
+      },
+      "read": [
+        "config-error"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "invoice-service": true
+      },
+      "latency_s": 13.79,
+      "cost_usd": 0.018576,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "invoice-service",
+          "incident_type": "config-error",
+          "method": "hybrid",
+          "score": 0.622,
+          "fallback": false
+        }
+      ],
+      "reply": "1. 모니터링 상태: 2023-10-25 23:00:00 (모든 인스턴스)로 장애 시작  \n2. 설정 오류: `invalid value`, `missing required` (ConfigMap/Secret/환경변수) 및 DB 다운 (authentication failed, Unknown database)  \n3. 원복 및 복구:  \n   - 직전 정상 릴리스로 롤백하고 readiness probe 통과 확인  \n   - 트래픽 복구 및 설정 변경을 CI에 추가  \n   - 운영 환경에서만 재현되는 패턴 분석 진행."
+    },
+    {
+      "id": "e10",
+      "expected": {
+        "inventory-service": "thread-pool-exhaustion",
+        "reporting-service": "replication-lag"
+      },
+      "read": [
+        "replication-lag",
+        "thread-pool-exhaustion"
+      ],
+      "hits": 2,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 2,
+      "system_hits": {
+        "inventory-service": true,
+        "reporting-service": true
+      },
+      "latency_s": 17.039,
+      "cost_usd": 0.030668,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "inventory-service",
+          "incident_type": "thread-pool-exhaustion",
+          "method": "hybrid",
+          "score": 0.6206,
+          "fallback": false
+        },
+        {
+          "system": "reporting-service",
+          "incident_type": "replication-lag",
+          "method": "hybrid",
+          "score": 0.6265,
+          "fallback": false
+        }
+      ],
+      "reply": "1. 모니터링 inventory-service: 상태=degraded, CPU 34.7%, 메모리 61.8%, 알림 2건 [\"thread pool 'order-exec' 100% busy, task queue 200/200\", \"503s from /health while CPU stays low\"]  \n2. 모니터링 reporting-service: 상태=degraded, CPU 36.4%, 메모리 63.7%, 알림 2건 [\"read replica db-ro-2 is 17 minutes behind the primary\", \"dashboards showing stale rows after the 14:05 bulk update\"]  \n3. 모니터링 web-01: 상태=healthy, CPU 35.0%, 메모리 48.5%, 알림 0건 []"
+    },
+    {
+      "id": "e11",
+      "expected": {
+        "recommend-service": "memory-leak"
+      },
+      "read": [
+        "memory-leak"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "recommend-service": true
+      },
+      "latency_s": 14.239,
+      "cost_usd": 0.018449,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "recommend-service",
+          "incident_type": "memory-leak",
+          "method": "hybrid",
+          "score": 0.5952,
+          "fallback": false
+        }
+      ],
+      "reply": "1. get_monitoring_status로 메모리 사용률 추세(시간에 따라 꾸준히 증가하는지)를 확인한다.  \n2. OOM 직전(90% 이상)이면 해당 프로세스를 즉시 재시작해 서비스 중단을 막는다 — 재시작은 임시 조치일 뿐임을 기록해둔다.  \n3. 힙 덤프 또는 프로파일링 도구로 어떤 객체가 계속 쌓이는지 확인한다.  \n4. 캐시 무제한 증가, 커넥션 미반환, 이벤트 리스너 중복 등록 같은 패턴이 최근 배포에 있었는지 점검한다.  \n5. 원인이 된 배포가 있으면 롤백하고, 컨테이너 메모리 상한선을 재확인해 재발 시 더 빨리 감지되도록 조정한다."
+    },
+    {
+      "id": "e12",
+      "expected": {
+        "ledger-service": "db-lock",
+        "recommend-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "db-lock",
+        "memory-leak",
+        "network-timeout"
+      ],
+      "hits": 3,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 3,
+      "system_hits": {
+        "ledger-service": true,
+        "recommend-service": true,
+        "gateway-service": true
+      },
+      "latency_s": 17.809,
+      "cost_usd": 0.036776,
+      "retry_count": 0,
+      "validation_attempts": 3,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "ledger-service",
+          "incident_type": "db-lock",
+          "method": "hybrid",
+          "score": 0.7055,
+          "fallback": false
+        },
+        {
+          "system": "gateway-service",
+          "incident_type": "network-timeout",
+          "method": "hybrid",
+          "score": 0.6199,
+          "fallback": false
+        },
+        {
+          "system": "recommend-service",
+          "incident_type": "memory-leak",
+          "method": "hybrid",
+          "score": 0.5952,
+          "fallback": false
+        }
+      ],
+      "reply": "1) ledger-service: 상태=degraded, CPU 29.2%, 메모리 55.6%, 알림 2건  \n2) gateway-service: 상태=degraded, CPU 27.7%, 메모리 43.8%, 알림 2건  \n3) recommend-service: 상태=degraded, CPU 46.4%, 메모리 94.2%, 알림 2건  \n\n# Runbook: DB 락 경합 대응 절차  \n# Runbook: 네트워크 타임아웃 대응 절차  \n# Runbook: 메모리 누수 대응 절차"
+    }
+  ]
+}

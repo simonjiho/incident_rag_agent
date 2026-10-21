@@ -1,0 +1,435 @@
+{
+  "kind": "e2e",
+  "label": "hybrid-ollama",
+  "created": "20261020-173726",
+  "base_url": "http://127.0.0.1:8100",
+  "health": {
+    "status": "ok",
+    "instance_id": 4494490128,
+    "creation_count": 1,
+    "supervisor_version": "v2",
+    "llm_backend": "ollama",
+    "fast_llm": "ollama:qwen3:0.6b",
+    "quality_llm": "ollama:qwen3:8b",
+    "runbook_selector": "hybrid",
+    "rag_min_score": 0.52
+  },
+  "summary": {
+    "cases": 12,
+    "errors": 1,
+    "mean_recall": 0.778,
+    "micro_recall": 0.706,
+    "hits": 12,
+    "expected_total": 17,
+    "hits_base_systems": "4/6",
+    "hits_new_systems": "8/11",
+    "exact_rate": 0.667,
+    "pair_accuracy": null,
+    "extra_runbooks": 1,
+    "latency_mean_s": 108.409,
+    "latency_median_s": 69.359,
+    "latency_max_s": 400.289,
+    "cost_usd_total": 0.103981,
+    "retries_total": 1,
+    "validation_attempts_mean": 1,
+    "replan_rate": 0.0
+  },
+  "cases": [
+    {
+      "id": "e01",
+      "expected": {
+        "auth-service": "high-latency"
+      },
+      "read": [
+        "high-latency"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "auth-service": true
+      },
+      "latency_s": 58.23,
+      "cost_usd": 0.00944,
+      "retry_count": 1,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "auth-service",
+          "incident_type": "high-latency",
+          "method": "hybrid",
+          "score": 0.6292,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **커넥션 풀 사용률 92% 초과 확인 및 조치**: 커넥션 풀 사용률이 92%를 넘고 p95 지연시간이 2.4s(임계치 1.0s)를 초과하므로, 풀 크기 확장 또는 느린 쿼리/외부 호출에 타임아웃을 적용해야 합니다.  \n2) **지연 분산 및 캐시/읽기 복제본 활용**: 5분 내 p95가 1.0s 이하로 낮아지지 않으면 캐시 계층 또는 읽기 복제본을 통해 트래픽을 분산해야 합니다.  \n3) **근본 원인 분석 및 최적화 티켓 등록**: 정상화 후 느린 쿼리 로그를 분석해 지연 원인을 문서화하고, 후속 최적화 티켓을 등록해야 합니다."
+    },
+    {
+      "id": "e02",
+      "expected": {
+        "payments-service": "cpu-spike"
+      },
+      "read": [
+        "cpu-spike"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "payments-service": true
+      },
+      "latency_s": 31.665,
+      "cost_usd": 0.006582,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "payments-service",
+          "incident_type": "cpu-spike",
+          "method": "hybrid",
+          "score": 0.6156,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **모니터링 상태 확인**: payments-service의 CPU 사용률 92.3%, 메모리 55.7%로 'CPU 91% (threshold 80%)' 알림 발생. 최근 배포/트래픽 변화 시점 확인 필요.  \n2) **요청 패턴 분석**: 로그에서 반복 호출 또는 배치 작업 중복 실행 여부 확인. 'payments-service-3 instance responding slow' 알림과 관련된 특정 요청 패턴 확인.  \n3) **인스턴스 확장 및 롤백**: CPU 90% 이상 지속 시 payments-service-3 인스턴스를 오토스케일링 그룹에서 추가로 확장. 배치 잡 중복 실행 시점과 급증 시각 일치 시 직전 배포 롤백 및 원인 분석 진행.  \n4) **프로파일링 및 최적화**: 정상화 후 프로파일링 결과 기반 핫스팟 코드 식별 및 최적화 작업 등록."
+    },
+    {
+      "id": "e03",
+      "expected": {
+        "cache-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "disk-full",
+        "network-timeout"
+      ],
+      "hits": 1,
+      "recall": 0.5,
+      "exact": false,
+      "extra": [
+        "disk-full"
+      ],
+      "pairs_ok": 1,
+      "system_hits": {
+        "cache-service": false,
+        "gateway-service": true
+      },
+      "latency_s": 76.16,
+      "cost_usd": 0.013937,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "cache-service",
+          "incident_type": "disk-full",
+          "method": "hybrid",
+          "score": 0.6052,
+          "fallback": false
+        },
+        {
+          "system": "gateway-service",
+          "incident_type": "network-timeout",
+          "method": "hybrid",
+          "score": 0.6199,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **cache-service 대응 절차**  \n   - 1) 모니터링 상태 확인: CPU 48.6%, 메모리 92.3% 사용률 확인. 알림 'memory usage climbing steadily over 6h', 'heap near limit' 발생.  \n   - 2) 메모리 누수 또는 GC 비효율 확인: 메모리 사용률 상승 추세 및 힙 근접 경고에 따라 메모리 누수 또는 GC 설정 점검.  \n   - 3) 임시 메모리 확장 및 GC 최적화: 메모리 사용량을 줄이기 위해 메모리 누수 원인 제거 및 GC 파라미터 조정.  \n\n2) **gateway-service 대응 절차**  \n   - 1) 모니터링 상태 확인: CPU 31.0%, 메모리 45.5% 사용률 확인. 알림 'upstream timeout to payments-service (504)', 'network packet loss 3%' 발생.  \n   - 2) 네트워크 경로 및 헬스체크 점검: payments-service 연결 타임아웃 및 패킷 손실 3%에 따라 네트워크 경로 이상 여부 확인.  \n   - 3) 타임아웃 임계값 조정 및 라우팅 변경: 임시로 타임아웃 임계값 상향 및 패킷 손실 구간 우회 라우팅 적용.  \n\n3) **공통 대응 조치**  \n   - 1) 정상화 후 모니터링 재점검: 모든 서비스의 CPU/메모리 사용률 및 알림 상태를 24시간 동안 지속적으로 모니터링.  \n   - 2) 로그 및 네트워크 정책 재검토: 메모리/네트워크 관련 로그 보존 정책 및 헬스체크 주기 재설정."
+    },
+    {
+      "id": "e04",
+      "expected": {
+        "log-service": "disk-full"
+      },
+      "read": [
+        "disk-full"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "log-service": true
+      },
+      "latency_s": 37.745,
+      "cost_usd": 0.007291,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "log-service",
+          "incident_type": "disk-full",
+          "method": "hybrid",
+          "score": 0.6142,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **log-service 시스템 점검**  \n- 모니터링 상태: `degraded`, 디스크 사용률 `/var/log` 95%로 임계 수준(90% 이상) 확인.  \n- 알림 확인: 'disk usage 95% on /var/log', 'disk space low' 2건 발생.  \n\n2) **디스크 공간 즉시 확보**  \n- `/var/log` 및 `/tmp` 디렉터리의 로그/임시 파일, 오래된 백업을 안전하게 삭제하여 공간 확보.  \n- 로그 로테이션 정책 재검토 및 디스크 사용률 알림 임계값(90%) 재조정.  \n\n3) **장기적 대응 및 모니터링 강화**  \n- 로그 레벨 및 로테이션 주기 점검, 비정상적인 파일 생성 프로세스 확인.  \n- 쿠버네티스 파드 상태(`Evicted: ephemeral-storage`) 및 디스크 사용률 지속 모니터링."
+    },
+    {
+      "id": "e05",
+      "error": "timed out",
+      "expected": {
+        "ledger-service": "db-lock"
+      },
+      "read": [],
+      "recall": 0.0,
+      "hits": 0,
+      "exact": false,
+      "extra": [],
+      "system_hits": {
+        "ledger-service": false
+      },
+      "latency_s": 400.289
+    },
+    {
+      "id": "e06",
+      "expected": {
+        "portal-service": "cert-expiry"
+      },
+      "read": [
+        "cert-expiry"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "portal-service": true
+      },
+      "latency_s": 137.339,
+      "cost_usd": 0.008491,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "portal-service",
+          "incident_type": "cert-expiry",
+          "method": "hybrid",
+          "score": 0.6908,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **TLS 핸드셰이크 실패 확인 및 인증서 만료일 확인**  \n   - `openssl s_client` 명령어로 portal.example.com의 인증서 `notAfter` 날짜를 직접 확인하여 00:00 UTC 만료 확인.  \n   - 모니터링 데이터에서 TLS 핸드셰이크 실패율 100% 및 'handshake failure rate 100% on port 443' 확인.  \n\n2) **인증서 계층 및 체인 점검**  \n   - 로드밸런서, 인그레스, 서비스 메시, 내부 mTLS 계층 중 인증서가 적용된 위치 확인.  \n   - 중간 인증서 누락 여부 점검 (예: `tlsv1 alert certificate expired` 로그 분석).  \n\n3) **인증서 갱신 및 배포, 인그레스/프록시 재로드**  \n   - cert-manager의 `CertificateNotReady` 및 ACME 'renewal failed' 로그 분석 후, 새 인증서 즉시 발급/갱신.  \n   - 갱신된 인증서를 해당 계층에 교체 배포하고, 인그레스/프록시 재로드로 새 인증서 적용.  \n   - 자동 갱신 실패 원인 (DNS 챌린지, 권한, 스케줄러 문제) 확인 및 수정.  \n\n4) **인증서 인벤토리 점검 및 알림 설정**  \n   - 전체 인증서 만료일 기준 점검 후, 만료 30일·7일 전 알림 등록.  \n   - CPU 13.7%, 메모리 38.4% 사용량은 정상 범위로 판단."
+    },
+    {
+      "id": "e07",
+      "expected": {
+        "search-service": "dns-failure",
+        "notification-service": "queue-backlog"
+      },
+      "read": [
+        "dns-failure",
+        "queue-backlog"
+      ],
+      "hits": 2,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 2,
+      "system_hits": {
+        "search-service": true,
+        "notification-service": true
+      },
+      "latency_s": 139.767,
+      "cost_usd": 0.010887,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "search-service",
+          "incident_type": "dns-failure",
+          "method": "hybrid",
+          "score": 0.557,
+          "fallback": false
+        },
+        {
+          "system": "notification-service",
+          "incident_type": "queue-backlog",
+          "method": "hybrid",
+          "score": 0.6604,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **search-service**  \n1) get_monitoring_status로 search-service의 DNS 해석 오류 확인 및 IP 직접 호출 성공 여부 비교 (알림: 'getaddrinfo ENOTFOUND inventory.internal from 12/12 pods').  \n2) 문제 파드에서 `dig`/`nslookup`로 리졸버 응답(SERVFAIL, NXDOMAIN) 확인 및 `/etc/resolv.conf` 검토 (알림: 'upstream host lookups failing; cached connections still serving').  \n3) CoreDNS 파드 상태 및 로그 확인 후 비정상 시 재시작 또는 레플리카 확장.  \n\n2) **notification-service**  \n1) get_monitoring_status와 큐 지표로 consumer lag(480k messages), oldest message age(23 min), 유입/소비 속도 확인 (알림: 'consumer lag 480k messages on order-events topic').  \n2) 컨슈머 리밸런싱 또는 죽음 여부 확인 후 재기동 (알림: 'oldest unprocessed message is 23 min old').  \n3) 소비 속도가 유입을 따라가지 못할 경우 컨슈머 수 및 파티션 병렬도 확장."
+    },
+    {
+      "id": "e08",
+      "expected": {
+        "shipping-service": "rate-limit"
+      },
+      "read": [
+        "rate-limit"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "shipping-service": true
+      },
+      "latency_s": 62.558,
+      "cost_usd": 0.007765,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "shipping-service",
+          "incident_type": "rate-limit",
+          "method": "hybrid",
+          "score": 0.6672,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **429 응답 비율 및 제한 클라이언트 확인**: get_monitoring_status와 게이트웨이 로그를 통해 'carrier API returned HTTP 429' 비율과 제한된 클라이언트/API 키를 분석. 알림에 따르면 'daily quota exhausted'로 특정 클라이언트에서만 발생.  \n2) **외부 API 제한 확인**: carrier API가 외부 API이므로, 남은 쿼터와 Retry-After 헤더 시간(초기화 시각)을 확인. 알림에 'daily quota exhausted'로 일일 쿼터 초과.  \n3) **재시도 폭주 대응**: outbound call volume 3x normal로 재시도 폭주 발생. 지수 백오프와 지터 적용, 불필요한 재시도 중단. CPU 24.6%, 메모리 40.8%는 정상.  \n4) **쿼터 상향 또는 큐잉 처리**: 급한 경우 쿼터 상향 요청 또는 큐잉으로 요청 속도 조절. 배치 잡/마케팅 푸시 후 요청량 급증 시점과 일치.  \n5) **요청량 급증 원인 분석**: 정상화 후 배치/캠페인으로 인한 요청량 폭증 확인. 클라이언트별 쿼터 재설정 및 사용량 알림 재설정."
+    },
+    {
+      "id": "e09",
+      "expected": {
+        "invoice-service": "config-error"
+      },
+      "read": [
+        "config-error"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "invoice-service": true
+      },
+      "latency_s": 50.587,
+      "cost_usd": 0.007024,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "invoice-service",
+          "incident_type": "config-error",
+          "method": "hybrid",
+          "score": 0.622,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **모니터링 상태 및 배포 이력 확인**  \n   - invoice-service의 상태가 degraded로, 알림 2건 발생 (PAYMENT_API_URL 누락, readiness probe 실패).  \n   - 배포/설정 변경 시점과 장애 시작 시각을 대조해 최근 변경 내역 확인.  \n\n2) **로그 및 설정 오류 분석**  \n   - 파드 로그에서 `CrashLoopBackOff` 및 `PAYMENT_API_URL is empty` 오류 확인.  \n   - readiness probe 실패 원인으로 `invalid configuration` 또는 `missing required environment variable` 확인.  \n\n3) **ConfigMap/Secret 롤백 및 재배포**  \n   - PAYMENT_API_URL 설정 누락 확인 후, 직전 정상 버전의 ConfigMap/Secret으로 롤백.  \n   - readiness probe 통과 여부 검증 후 트래픽 복구.  \n   - CI에 설정 검증 스키마 추가 및 카나리 배포로 변경 영향 범위 제한."
+    },
+    {
+      "id": "e10",
+      "expected": {
+        "inventory-service": "thread-pool-exhaustion",
+        "reporting-service": "replication-lag"
+      },
+      "read": [
+        "thread-pool-exhaustion"
+      ],
+      "hits": 1,
+      "recall": 0.5,
+      "exact": false,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "inventory-service": true,
+        "reporting-service": false
+      },
+      "latency_s": 132.122,
+      "cost_usd": 0.014288,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "inventory-service",
+          "incident_type": "thread-pool-exhaustion",
+          "method": "hybrid",
+          "score": 0.6206,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **inventory-service**  \n- 1) `get_monitoring_status`로 활성 스레드 수, 작업 큐 길이, 거부 요청 수 확인: CPU 33.1% 낮음, 작업 큐 200/200, 거부 요청 2건.  \n- 2) `jstack`으로 스레드 덤프 분석: 'order-exec' 풀 100% 사용, 스레드 WAITING/BLOCKED 상태.  \n- 3) 외부 API/DB 호출 지점 타임아웃 및 서킷 브레이커 적용 (예: DB 쿼리 최대 실행 시간 500ms로 제한).  \n- 4) 급한 경우 인스턴스 재시작 또는 확장 (예: 풀 크기 200 → 300으로 조정, 단 임시 조치).  \n- 5) 정상화 후 의존 서비스 격리 및 스레드 사용률 알림 설정 (예: 80% 사용 시 경고).  \n\n2) **reporting-service**  \n- 수집된 데이터 없음.  \n\n3) **web-01**  \n- 수집된 데이터 없음."
+    },
+    {
+      "id": "e11",
+      "expected": {
+        "recommend-service": "memory-leak"
+      },
+      "read": [
+        "memory-leak"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "recommend-service": true
+      },
+      "latency_s": 59.907,
+      "cost_usd": 0.007389,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "recommend-service",
+          "incident_type": "memory-leak",
+          "method": "hybrid",
+          "score": 0.5952,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **시스템: recommend-service**  \n   - 메모리 사용률 97.4% 및 RSS 120MB/h 증가로 메모리 누수 의심. OOMKilled로 9회 재시작됨.  \n   - 즉시 `get_monitoring_status`로 메모리 추세 확인 후, OOM 직전(90% 이상) 시 재시작(임시 조치)  \n\n2) **시스템: recommend-service**  \n   - 힙 덤프 또는 프로파일링 도구로 누수 객체 확인. 최근 배포 시 캐시 무제한 증가, 커넥션 미반환, 리스너 중복 등록 패턴 확인 필요.  \n\n3) **시스템: recommend-service**  \n   - 원인 배포 시 롤백 후, 컨테이너 메모리 상한선 재조정(재발 방지). 현재 CPU 52.8% 및 메모리 97.4% 상황에서 즉시 재시작 권장."
+    },
+    {
+      "id": "e12",
+      "expected": {
+        "ledger-service": "db-lock",
+        "recommend-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "db-lock"
+      ],
+      "hits": 1,
+      "recall": 0.333,
+      "exact": false,
+      "extra": [],
+      "pairs_ok": 1,
+      "system_hits": {
+        "ledger-service": true,
+        "recommend-service": false,
+        "gateway-service": false
+      },
+      "latency_s": 114.543,
+      "cost_usd": 0.010887,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 0,
+      "selections": [
+        {
+          "system": "ledger-service",
+          "incident_type": "db-lock",
+          "method": "hybrid",
+          "score": 0.7055,
+          "fallback": false
+        }
+      ],
+      "reply": "1) **ledger-service**  \n- DB 락 경합 대응 절차 적용:  \n  1. `get_monitoring_status`로 DB 응답 정상 여부 및 쓰기 요청 대기 시작 시점 확인 (CPU 28.4%, 메모리 55.2% 기준).  \n  2. `pg_stat_activity` 또는 `SHOW ENGINE INNODB STATUS`로 블로킹 세션(예: `idle in transaction` 37개) 및 대기 세션 체인 분석.  \n  3. 오래된 트랜잭션 또는 배치 UPDATE 세션(`Lock wait timeout exceeded`)을 `KILL` 또는 `pg_terminate_backend`로 종료.  \n\n2) **recommend-service, gateway-service**  \n- **데이터 부족**: 수집된 사실에 해당 서비스의 구체적 장애 원인(예: DB, 네트워크, 코드 오류)이 명시되지 않아 대응 절차 제시 불가.  \n- **간접 영향 가능성**: ledger-service 장애로 인한 의존성 실패로 추정되므로, **ledger-service 복구 후 서비스 복구 시도** 권장.  \n\n3) **공통 조치**  \n- 정상화 후, 락 대기 시간 상한 설정 및 트랜잭션 길이 모니터링 강화.  \n- 네트워크 패킷 손실 여부 재확인 (모니터링 데이터 없음)."
+    }
+  ]
+}

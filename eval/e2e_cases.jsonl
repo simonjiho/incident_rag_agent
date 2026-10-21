@@ -1,0 +1,12 @@
+{"id":"e01","query":"auth-service 응답이 너무 느려요. 장애 진단 부탁드립니다.","expected":{"auth-service":"high-latency"}}
+{"id":"e02","query":"payments-service 쪽에 장애가 난 것 같아요. 진단 좀 해주세요.","expected":{"payments-service":"cpu-spike"}}
+{"id":"e03","query":"cache-service랑 gateway-service 둘 다 상태가 이상해요. 장애 원인 진단해줘.","expected":{"cache-service":"memory-leak","gateway-service":"network-timeout"}}
+{"id":"e04","query":"web-01은 괜찮아 보이는데 log-service에서 장애 알림이 떴어요. 진단해줘.","expected":{"log-service":"disk-full"}}
+{"id":"e05","query":"ledger-service 쓰기 작업이 지연되고 있어요. 장애 진단해줘.","expected":{"ledger-service":"db-lock"}}
+{"id":"e06","query":"portal-service가 다운됐어요! 원인 진단 부탁드려요.","expected":{"portal-service":"cert-expiry"}}
+{"id":"e07","query":"search-service와 notification-service에 장애가 났어요. 각각 진단해줘.","expected":{"search-service":"dns-failure","notification-service":"queue-backlog"}}
+{"id":"e08","query":"shipping-service 배송 조회가 지연돼요. 진단해줘.","expected":{"shipping-service":"rate-limit"}}
+{"id":"e09","query":"invoice-service가 오늘 새벽부터 장애예요. 진단해줘.","expected":{"invoice-service":"config-error"}}
+{"id":"e10","query":"inventory-service와 reporting-service, 그리고 web-01까지 같이 지연 진단해줘.","expected":{"inventory-service":"thread-pool-exhaustion","reporting-service":"replication-lag"}}
+{"id":"e11","query":"recommend-service가 계속 재시작돼요. 장애 진단 부탁드립니다.","expected":{"recommend-service":"memory-leak"}}
+{"id":"e12","query":"ledger-service, recommend-service, gateway-service 세 곳에서 동시에 장애가 났어요. 진단해줘.","expected":{"ledger-service":"db-lock","recommend-service":"memory-leak","gateway-service":"network-timeout"}}

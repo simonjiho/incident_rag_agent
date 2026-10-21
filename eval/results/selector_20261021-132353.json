@@ -1,0 +1,2997 @@
+{
+  "kind": "selector",
+  "label": "selector",
+  "created": "20261021-132353",
+  "config": {
+    "cases": "eval/selector_cases.jsonl",
+    "n": 40,
+    "include_query": false,
+    "min_score": 0.52,
+    "embed_model": "bge-m3"
+  },
+  "methods": {
+    "keyword": {
+      "overall": {
+        "n": 40,
+        "top1": 12,
+        "top3": 12,
+        "mean_ms": 0.002,
+        "p95_ms": 0.003,
+        "fallback": 0,
+        "degraded": 0
+      },
+      "by_category": {
+        "keyword": {
+          "n": 12,
+          "top1": 12,
+          "top3": 12,
+          "mean_ms": 0.001,
+          "p95_ms": 0.001,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "paraphrase": {
+          "n": 18,
+          "top1": 0,
+          "top3": 0,
+          "mean_ms": 0.002,
+          "p95_ms": 0.005,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "trap": {
+          "n": 10,
+          "top1": 0,
+          "top3": 0,
+          "mean_ms": 0.001,
+          "p95_ms": 0.003,
+          "fallback": 0,
+          "degraded": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "s01",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.005,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s02",
+          "category": "trap",
+          "expected": "db-down",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout"
+          ],
+          "ms": 0.003,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s03",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.003,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s04",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s05",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s06",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s07",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s08",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.003,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s09",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s10",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s11",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s12",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s13",
+          "category": "trap",
+          "expected": "db-lock",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s14",
+          "category": "paraphrase",
+          "expected": "disk-full",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s15",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.006,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s16",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s17",
+          "category": "trap",
+          "expected": "rate-limit",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s18",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s19",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s20",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s21",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s22",
+          "category": "trap",
+          "expected": "memory-leak",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s23",
+          "category": "trap",
+          "expected": "queue-backlog",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s24",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s25",
+          "category": "paraphrase",
+          "expected": "cpu-spike",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s26",
+          "category": "trap",
+          "expected": "replication-lag",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s27",
+          "category": "trap",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s28",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s29",
+          "category": "trap",
+          "expected": "cert-expiry",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s30",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s31",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s32",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s33",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s34",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s35",
+          "category": "trap",
+          "expected": "config-error",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.002,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s36",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s37",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s38",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s39",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "db-down",
+          "top3": [
+            "db-down"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s40",
+          "category": "trap",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency"
+          ],
+          "ms": 0.001,
+          "degraded": false,
+          "fallback": false
+        }
+      ]
+    },
+    "vector": {
+      "overall": {
+        "n": 40,
+        "top1": 36,
+        "top3": 40,
+        "mean_ms": 33.721,
+        "p95_ms": 39.053,
+        "fallback": 0,
+        "degraded": 0
+      },
+      "by_category": {
+        "keyword": {
+          "n": 12,
+          "top1": 11,
+          "top3": 12,
+          "mean_ms": 32.953,
+          "p95_ms": 35.974,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "paraphrase": {
+          "n": 18,
+          "top1": 17,
+          "top3": 18,
+          "mean_ms": 34.043,
+          "p95_ms": 40.117,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "trap": {
+          "n": 10,
+          "top1": 8,
+          "top3": 10,
+          "mean_ms": 34.064,
+          "p95_ms": 37.001,
+          "fallback": 0,
+          "degraded": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "s01",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "db-down",
+            "network-timeout"
+          ],
+          "ms": 39.009,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s02",
+          "category": "trap",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "cert-expiry",
+            "network-timeout"
+          ],
+          "ms": 32.733,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s03",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "network-timeout",
+            "dns-failure"
+          ],
+          "ms": 32.695,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s04",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "high-latency",
+            "memory-leak"
+          ],
+          "ms": 32.767,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s05",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "db-down",
+            "dns-failure"
+          ],
+          "ms": 32.656,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s06",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "high-latency",
+            "replication-lag"
+          ],
+          "ms": 32.323,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s07",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "db-down",
+            "memory-leak"
+          ],
+          "ms": 31.547,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s08",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "db-down",
+            "config-error"
+          ],
+          "ms": 34.696,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s09",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "replication-lag",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 33.453,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s10",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency",
+            "thread-pool-exhaustion",
+            "db-lock"
+          ],
+          "ms": 31.767,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s11",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "high-latency",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 32.046,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s12",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "thread-pool-exhaustion",
+            "db-lock"
+          ],
+          "ms": 31.918,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s13",
+          "category": "trap",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "disk-full",
+            "db-down"
+          ],
+          "ms": 34.119,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s14",
+          "category": "paraphrase",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "db-down",
+            "dns-failure"
+          ],
+          "ms": 31.355,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s15",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "high-latency",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 32.6,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s16",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "cpu-spike",
+            "disk-full"
+          ],
+          "ms": 31.648,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s17",
+          "category": "trap",
+          "expected": "rate-limit",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "rate-limit",
+            "high-latency"
+          ],
+          "ms": 36.747,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s18",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "disk-full",
+            "db-lock"
+          ],
+          "ms": 36.581,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s19",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "config-error",
+            "dns-failure"
+          ],
+          "ms": 31.296,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s20",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "dns-failure",
+          "top3": [
+            "dns-failure",
+            "db-down",
+            "db-lock"
+          ],
+          "ms": 33.935,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s21",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "thread-pool-exhaustion",
+            "network-timeout"
+          ],
+          "ms": 33.972,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s22",
+          "category": "trap",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "cpu-spike",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 32.707,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s23",
+          "category": "trap",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "high-latency",
+            "cpu-spike"
+          ],
+          "ms": 32.448,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s24",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency",
+            "queue-backlog",
+            "cpu-spike"
+          ],
+          "ms": 31.504,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s25",
+          "category": "paraphrase",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "thread-pool-exhaustion",
+            "db-down"
+          ],
+          "ms": 39.893,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s26",
+          "category": "trap",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "high-latency",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 33.26,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s27",
+          "category": "trap",
+          "expected": "dns-failure",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "db-down",
+            "dns-failure"
+          ],
+          "ms": 31.414,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s28",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "db-down",
+            "rate-limit"
+          ],
+          "ms": 33.815,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s29",
+          "category": "trap",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "db-down",
+            "network-timeout"
+          ],
+          "ms": 36.92,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s30",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "disk-full",
+            "cpu-spike"
+          ],
+          "ms": 34.766,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s31",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "queue-backlog",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 33.666,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s32",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "config-error",
+            "dns-failure"
+          ],
+          "ms": 32.01,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s33",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "rate-limit",
+            "disk-full"
+          ],
+          "ms": 35.478,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s34",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "db-down",
+            "cert-expiry"
+          ],
+          "ms": 41.387,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s35",
+          "category": "trap",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "cert-expiry",
+            "db-down"
+          ],
+          "ms": 33.228,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s36",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency",
+            "network-timeout",
+            "rate-limit"
+          ],
+          "ms": 31.456,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s37",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "high-latency",
+            "db-lock"
+          ],
+          "ms": 30.791,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s38",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "high-latency",
+            "replication-lag"
+          ],
+          "ms": 31.142,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s39",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "high-latency",
+            "db-down"
+          ],
+          "ms": 36.044,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s40",
+          "category": "trap",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "network-timeout",
+            "cpu-spike"
+          ],
+          "ms": 37.067,
+          "degraded": false,
+          "fallback": false
+        }
+      ]
+    },
+    "bm25": {
+      "overall": {
+        "n": 40,
+        "top1": 25,
+        "top3": 36,
+        "mean_ms": 0.09,
+        "p95_ms": 0.109,
+        "fallback": 0,
+        "degraded": 0
+      },
+      "by_category": {
+        "keyword": {
+          "n": 12,
+          "top1": 8,
+          "top3": 10,
+          "mean_ms": 0.084,
+          "p95_ms": 0.091,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "paraphrase": {
+          "n": 18,
+          "top1": 11,
+          "top3": 16,
+          "mean_ms": 0.091,
+          "p95_ms": 0.11,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "trap": {
+          "n": 10,
+          "top1": 6,
+          "top3": 10,
+          "mean_ms": 0.094,
+          "p95_ms": 0.105,
+          "fallback": 0,
+          "degraded": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "s01",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "disk-full",
+            "network-timeout"
+          ],
+          "ms": 0.109,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s02",
+          "category": "trap",
+          "expected": "db-down",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "db-down",
+            "db-lock"
+          ],
+          "ms": 0.109,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s03",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error"
+          ],
+          "ms": 0.096,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s04",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full"
+          ],
+          "ms": 0.075,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s05",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "cert-expiry",
+            "memory-leak"
+          ],
+          "ms": 0.083,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s06",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "cert-expiry",
+            "queue-backlog"
+          ],
+          "ms": 0.085,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s07",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "config-error",
+            "db-lock"
+          ],
+          "ms": 0.084,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s08",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error",
+            "rate-limit"
+          ],
+          "ms": 0.092,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s09",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "replication-lag",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 0.109,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s10",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "db-down",
+            "network-timeout"
+          ],
+          "ms": 0.086,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s11",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "thread-pool-exhaustion",
+            "high-latency"
+          ],
+          "ms": 0.078,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s12",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "disk-full",
+            "db-down"
+          ],
+          "ms": 0.084,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s13",
+          "category": "trap",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "disk-full",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 0.094,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s14",
+          "category": "paraphrase",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "cert-expiry",
+            "config-error"
+          ],
+          "ms": 0.083,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s15",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "config-error",
+            "disk-full"
+          ],
+          "ms": 0.093,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s16",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "replication-lag",
+            "cpu-spike"
+          ],
+          "ms": 0.088,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s17",
+          "category": "trap",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "db-lock",
+            "network-timeout"
+          ],
+          "ms": 0.086,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s18",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "cert-expiry",
+            "cpu-spike"
+          ],
+          "ms": 0.085,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s19",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "db-down",
+            "dns-failure"
+          ],
+          "ms": 0.094,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s20",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "memory-leak",
+            "dns-failure"
+          ],
+          "ms": 0.094,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s21",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "rate-limit",
+            "network-timeout"
+          ],
+          "ms": 0.077,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s22",
+          "category": "trap",
+          "expected": "memory-leak",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "memory-leak",
+            "rate-limit"
+          ],
+          "ms": 0.098,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s23",
+          "category": "trap",
+          "expected": "queue-backlog",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "queue-backlog",
+            "config-error"
+          ],
+          "ms": 0.089,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s24",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency",
+            "disk-full",
+            "cert-expiry"
+          ],
+          "ms": 0.083,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s25",
+          "category": "paraphrase",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "disk-full",
+            "db-down"
+          ],
+          "ms": 0.084,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s26",
+          "category": "trap",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "disk-full",
+            "cert-expiry"
+          ],
+          "ms": 0.092,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s27",
+          "category": "trap",
+          "expected": "dns-failure",
+          "predicted": "dns-failure",
+          "top3": [
+            "dns-failure",
+            "rate-limit",
+            "high-latency"
+          ],
+          "ms": 0.083,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s28",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error",
+            "disk-full"
+          ],
+          "ms": 0.086,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s29",
+          "category": "trap",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "disk-full",
+            "db-down"
+          ],
+          "ms": 0.09,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s30",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "memory-leak",
+            "config-error"
+          ],
+          "ms": 0.087,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s31",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "db-lock",
+            "disk-full"
+          ],
+          "ms": 0.081,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s32",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "disk-full",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 0.095,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s33",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "disk-full",
+            "cpu-spike"
+          ],
+          "ms": 0.081,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s34",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "rate-limit",
+            "dns-failure"
+          ],
+          "ms": 0.091,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s35",
+          "category": "trap",
+          "expected": "config-error",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "config-error",
+            "dns-failure"
+          ],
+          "ms": 0.098,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s36",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "db-lock",
+            "rate-limit"
+          ],
+          "ms": 0.077,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s37",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "thread-pool-exhaustion",
+            "db-down"
+          ],
+          "ms": 0.088,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s38",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "disk-full",
+            "dns-failure"
+          ],
+          "ms": 0.082,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s39",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "cpu-spike",
+            "dns-failure"
+          ],
+          "ms": 0.113,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s40",
+          "category": "trap",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "rate-limit",
+            "disk-full"
+          ],
+          "ms": 0.1,
+          "degraded": false,
+          "fallback": false
+        }
+      ]
+    },
+    "hybrid": {
+      "overall": {
+        "n": 40,
+        "top1": 33,
+        "top3": 38,
+        "mean_ms": 32.177,
+        "p95_ms": 34.819,
+        "fallback": 0,
+        "degraded": 0
+      },
+      "by_category": {
+        "keyword": {
+          "n": 12,
+          "top1": 9,
+          "top3": 11,
+          "mean_ms": 31.786,
+          "p95_ms": 33.443,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "paraphrase": {
+          "n": 18,
+          "top1": 15,
+          "top3": 17,
+          "mean_ms": 32.306,
+          "p95_ms": 35.051,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "trap": {
+          "n": 10,
+          "top1": 9,
+          "top3": 10,
+          "mean_ms": 32.414,
+          "p95_ms": 34.494,
+          "fallback": 0,
+          "degraded": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "s01",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "network-timeout",
+            "high-latency"
+          ],
+          "ms": 32.338,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s02",
+          "category": "trap",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "cert-expiry",
+            "db-lock"
+          ],
+          "ms": 32.699,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s03",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error",
+            "network-timeout"
+          ],
+          "ms": 36.374,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s04",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "high-latency",
+            "memory-leak"
+          ],
+          "ms": 31.743,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s05",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "memory-leak",
+            "cert-expiry"
+          ],
+          "ms": 31.565,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s06",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "replication-lag",
+            "cert-expiry"
+          ],
+          "ms": 31.993,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s07",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "db-down",
+            "db-lock"
+          ],
+          "ms": 30.641,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s08",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error",
+            "high-latency"
+          ],
+          "ms": 32.144,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s09",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "replication-lag",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 31.832,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s10",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "thread-pool-exhaustion",
+            "db-down"
+          ],
+          "ms": 31.262,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s11",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "high-latency",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 34.02,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s12",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "thread-pool-exhaustion",
+            "disk-full"
+          ],
+          "ms": 31.352,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s13",
+          "category": "trap",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "disk-full",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 31.724,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s14",
+          "category": "paraphrase",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "cert-expiry",
+            "config-error"
+          ],
+          "ms": 31.625,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s15",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "disk-full",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 31.516,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s16",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "cpu-spike",
+            "replication-lag"
+          ],
+          "ms": 34.196,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s17",
+          "category": "trap",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "network-timeout",
+            "db-lock"
+          ],
+          "ms": 32.192,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s18",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "db-lock",
+            "cert-expiry"
+          ],
+          "ms": 31.493,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s19",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "config-error",
+            "dns-failure"
+          ],
+          "ms": 33.312,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s20",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "dns-failure",
+            "cert-expiry"
+          ],
+          "ms": 34.817,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s21",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "thread-pool-exhaustion",
+            "network-timeout"
+          ],
+          "ms": 31.648,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s22",
+          "category": "trap",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "cpu-spike",
+            "db-lock"
+          ],
+          "ms": 34.847,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s23",
+          "category": "trap",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "high-latency",
+            "cert-expiry"
+          ],
+          "ms": 32.451,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s24",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency",
+            "queue-backlog",
+            "disk-full"
+          ],
+          "ms": 32.827,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s25",
+          "category": "paraphrase",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "db-down",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 30.982,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s26",
+          "category": "trap",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "high-latency",
+            "cert-expiry"
+          ],
+          "ms": 30.683,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s27",
+          "category": "trap",
+          "expected": "dns-failure",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "dns-failure",
+            "high-latency"
+          ],
+          "ms": 31.044,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s28",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "db-down",
+            "disk-full"
+          ],
+          "ms": 31.737,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s29",
+          "category": "trap",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "db-down",
+            "disk-full"
+          ],
+          "ms": 34.062,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s30",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "disk-full",
+            "db-lock"
+          ],
+          "ms": 31.34,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s31",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "cpu-spike",
+            "memory-leak"
+          ],
+          "ms": 31.893,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s32",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "thread-pool-exhaustion",
+            "config-error"
+          ],
+          "ms": 31.19,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s33",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "cpu-spike",
+            "disk-full"
+          ],
+          "ms": 31.317,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s34",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "rate-limit",
+            "db-down"
+          ],
+          "ms": 31.545,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s35",
+          "category": "trap",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "db-down",
+            "dns-failure"
+          ],
+          "ms": 32.092,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s36",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "rate-limit",
+            "db-lock"
+          ],
+          "ms": 31.143,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s37",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "db-lock",
+            "db-down"
+          ],
+          "ms": 30.758,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s38",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "db-down",
+            "db-lock"
+          ],
+          "ms": 31.459,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s39",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "cpu-spike",
+            "db-lock"
+          ],
+          "ms": 32.866,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s40",
+          "category": "trap",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "network-timeout",
+            "cpu-spike"
+          ],
+          "ms": 32.342,
+          "degraded": false,
+          "fallback": false
+        }
+      ]
+    },
+    "hybrid+fallback": {
+      "overall": {
+        "n": 40,
+        "top1": 33,
+        "top3": 38,
+        "mean_ms": 33.678,
+        "p95_ms": 38.429,
+        "fallback": 1,
+        "degraded": 0
+      },
+      "by_category": {
+        "keyword": {
+          "n": 12,
+          "top1": 9,
+          "top3": 11,
+          "mean_ms": 32.526,
+          "p95_ms": 36.735,
+          "fallback": 0,
+          "degraded": 0
+        },
+        "paraphrase": {
+          "n": 18,
+          "top1": 15,
+          "top3": 17,
+          "mean_ms": 34.294,
+          "p95_ms": 38.943,
+          "fallback": 1,
+          "degraded": 0
+        },
+        "trap": {
+          "n": 10,
+          "top1": 9,
+          "top3": 10,
+          "mean_ms": 33.951,
+          "p95_ms": 38.493,
+          "fallback": 0,
+          "degraded": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "s01",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "network-timeout",
+            "high-latency"
+          ],
+          "ms": 38.228,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s02",
+          "category": "trap",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "cert-expiry",
+            "db-lock"
+          ],
+          "ms": 42.256,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s03",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error",
+            "network-timeout"
+          ],
+          "ms": 32.947,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s04",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "high-latency",
+            "memory-leak"
+          ],
+          "ms": 31.459,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s05",
+          "category": "keyword",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "memory-leak",
+            "cert-expiry"
+          ],
+          "ms": 31.444,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s06",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "replication-lag",
+            "cert-expiry"
+          ],
+          "ms": 32.541,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s07",
+          "category": "paraphrase",
+          "expected": "queue-backlog",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "rate-limit",
+            "db-lock"
+          ],
+          "ms": 37.732,
+          "degraded": false,
+          "fallback": true
+        },
+        {
+          "id": "s08",
+          "category": "paraphrase",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "config-error",
+            "high-latency"
+          ],
+          "ms": 42.995,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s09",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "replication-lag",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 32.314,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s10",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "thread-pool-exhaustion",
+            "db-down"
+          ],
+          "ms": 32.207,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s11",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "high-latency",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 33.322,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s12",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "thread-pool-exhaustion",
+            "disk-full"
+          ],
+          "ms": 33.553,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s13",
+          "category": "trap",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "disk-full",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 33.88,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s14",
+          "category": "paraphrase",
+          "expected": "disk-full",
+          "predicted": "disk-full",
+          "top3": [
+            "disk-full",
+            "cert-expiry",
+            "config-error"
+          ],
+          "ms": 35.102,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s15",
+          "category": "paraphrase",
+          "expected": "db-lock",
+          "predicted": "db-lock",
+          "top3": [
+            "db-lock",
+            "disk-full",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 35.797,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s16",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "cpu-spike",
+            "replication-lag"
+          ],
+          "ms": 32.728,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s17",
+          "category": "trap",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "network-timeout",
+            "db-lock"
+          ],
+          "ms": 32.682,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s18",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "db-lock",
+            "cert-expiry"
+          ],
+          "ms": 36.877,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s19",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "config-error",
+            "dns-failure"
+          ],
+          "ms": 37.216,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s20",
+          "category": "paraphrase",
+          "expected": "dns-failure",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "dns-failure",
+            "cert-expiry"
+          ],
+          "ms": 32.735,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s21",
+          "category": "paraphrase",
+          "expected": "rate-limit",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "thread-pool-exhaustion",
+            "network-timeout"
+          ],
+          "ms": 32.108,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s22",
+          "category": "trap",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "cpu-spike",
+            "db-lock"
+          ],
+          "ms": 32.319,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s23",
+          "category": "trap",
+          "expected": "queue-backlog",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "high-latency",
+            "cert-expiry"
+          ],
+          "ms": 32.81,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s24",
+          "category": "keyword",
+          "expected": "high-latency",
+          "predicted": "high-latency",
+          "top3": [
+            "high-latency",
+            "queue-backlog",
+            "disk-full"
+          ],
+          "ms": 31.693,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s25",
+          "category": "paraphrase",
+          "expected": "cpu-spike",
+          "predicted": "cpu-spike",
+          "top3": [
+            "cpu-spike",
+            "db-down",
+            "thread-pool-exhaustion"
+          ],
+          "ms": 31.161,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s26",
+          "category": "trap",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "high-latency",
+            "cert-expiry"
+          ],
+          "ms": 31.663,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s27",
+          "category": "trap",
+          "expected": "dns-failure",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "dns-failure",
+            "high-latency"
+          ],
+          "ms": 33.828,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s28",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "db-down",
+            "disk-full"
+          ],
+          "ms": 32.116,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s29",
+          "category": "trap",
+          "expected": "cert-expiry",
+          "predicted": "cert-expiry",
+          "top3": [
+            "cert-expiry",
+            "db-down",
+            "disk-full"
+          ],
+          "ms": 32.624,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s30",
+          "category": "keyword",
+          "expected": "memory-leak",
+          "predicted": "memory-leak",
+          "top3": [
+            "memory-leak",
+            "disk-full",
+            "db-lock"
+          ],
+          "ms": 31.606,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s31",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "queue-backlog",
+          "top3": [
+            "queue-backlog",
+            "cpu-spike",
+            "memory-leak"
+          ],
+          "ms": 31.345,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s32",
+          "category": "keyword",
+          "expected": "db-down",
+          "predicted": "db-down",
+          "top3": [
+            "db-down",
+            "thread-pool-exhaustion",
+            "config-error"
+          ],
+          "ms": 36.619,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s33",
+          "category": "keyword",
+          "expected": "cpu-spike",
+          "predicted": "rate-limit",
+          "top3": [
+            "rate-limit",
+            "cpu-spike",
+            "disk-full"
+          ],
+          "ms": 30.822,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s34",
+          "category": "paraphrase",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "rate-limit",
+            "db-down"
+          ],
+          "ms": 33.882,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s35",
+          "category": "trap",
+          "expected": "config-error",
+          "predicted": "config-error",
+          "top3": [
+            "config-error",
+            "db-down",
+            "dns-failure"
+          ],
+          "ms": 33.552,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s36",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "rate-limit",
+            "db-lock"
+          ],
+          "ms": 31.342,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s37",
+          "category": "paraphrase",
+          "expected": "replication-lag",
+          "predicted": "replication-lag",
+          "top3": [
+            "replication-lag",
+            "db-lock",
+            "db-down"
+          ],
+          "ms": 31.417,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s38",
+          "category": "keyword",
+          "expected": "network-timeout",
+          "predicted": "network-timeout",
+          "top3": [
+            "network-timeout",
+            "db-down",
+            "db-lock"
+          ],
+          "ms": 32.17,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s39",
+          "category": "paraphrase",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "cpu-spike",
+            "db-lock"
+          ],
+          "ms": 32.134,
+          "degraded": false,
+          "fallback": false
+        },
+        {
+          "id": "s40",
+          "category": "trap",
+          "expected": "thread-pool-exhaustion",
+          "predicted": "thread-pool-exhaustion",
+          "top3": [
+            "thread-pool-exhaustion",
+            "network-timeout",
+            "cpu-spike"
+          ],
+          "ms": 33.893,
+          "degraded": false,
+          "fallback": false
+        }
+      ]
+    }
+  },
+  "search_text": {
+    "vector|alerts-only": {
+      "n": 40,
+      "top1": 36,
+      "top3": 40,
+      "mean_ms": 32.8,
+      "p95_ms": 34.499,
+      "fallback": 0,
+      "degraded": 0
+    },
+    "vector|alerts+query": {
+      "n": 40,
+      "top1": 34,
+      "top3": 38,
+      "mean_ms": 33.696,
+      "p95_ms": 35.603,
+      "fallback": 0,
+      "degraded": 0
+    },
+    "bm25|alerts-only": {
+      "n": 40,
+      "top1": 25,
+      "top3": 36,
+      "mean_ms": 0.093,
+      "p95_ms": 0.108,
+      "fallback": 0,
+      "degraded": 0
+    },
+    "bm25|alerts+query": {
+      "n": 40,
+      "top1": 24,
+      "top3": 34,
+      "mean_ms": 0.139,
+      "p95_ms": 0.158,
+      "fallback": 0,
+      "degraded": 0
+    },
+    "hybrid|alerts-only": {
+      "n": 40,
+      "top1": 33,
+      "top3": 38,
+      "mean_ms": 32.422,
+      "p95_ms": 35.83,
+      "fallback": 0,
+      "degraded": 0
+    },
+    "hybrid|alerts+query": {
+      "n": 40,
+      "top1": 35,
+      "top3": 38,
+      "mean_ms": 33.67,
+      "p95_ms": 35.789,
+      "fallback": 0,
+      "degraded": 0
+    }
+  }
+}

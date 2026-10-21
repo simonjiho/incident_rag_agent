@@ -1,0 +1,301 @@
+{
+  "kind": "e2e",
+  "label": "before-ollama",
+  "created": "20261020-221836",
+  "base_url": "http://127.0.0.1:8101",
+  "health": {
+    "status": "ok",
+    "instance_id": 4524060880,
+    "creation_count": 1,
+    "supervisor_version": "v2",
+    "llm_backend": "ollama",
+    "fast_llm": "ollama:qwen3:0.6b",
+    "quality_llm": "ollama:qwen3:8b"
+  },
+  "summary": {
+    "cases": 12,
+    "errors": 5,
+    "mean_recall": 0.292,
+    "micro_recall": 0.235,
+    "hits": 4,
+    "expected_total": 17,
+    "hits_base_systems": "4/6",
+    "hits_new_systems": "0/11",
+    "exact_rate": 0.25,
+    "pair_accuracy": null,
+    "extra_runbooks": 3,
+    "latency_mean_s": 122.779,
+    "latency_median_s": 61.153,
+    "latency_max_s": 400.024,
+    "cost_usd_total": 0.055232,
+    "retries_total": 1,
+    "validation_attempts_mean": 1,
+    "replan_rate": 1.0
+  },
+  "cases": [
+    {
+      "id": "e01",
+      "expected": {
+        "auth-service": "high-latency"
+      },
+      "read": [
+        "high-latency"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "auth-service": true
+      },
+      "latency_s": 74.333,
+      "cost_usd": 0.00815,
+      "retry_count": 1,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) **모니터링 상태 확인**: auth-service의 p95 지연시간 2.4s (임계치 1.0s 초과), 커넥션 풀 사용률 92%로 상태가 degraded 중입니다.  \n2) **커넥션 풀 및 타임아웃 조치**: 커넥션 풀 사용률 92%를 초과한 상태이므로 풀 크기 확장 또는 느린 쿼리/외부 호출에 타임아웃을 적용해야 합니다.  \n3) **캐시/복제본 분산**: 5분 내 p95 지연시간이 1.0s 이하로 회복되지 않으므로 캐시 계층 또는 읽기 복제본을 통해 트래픽을 분산해야 합니다.  \n4) **근본 원인 분석**: 정상화 후 느린 쿼리 로그를 분석해 원인을 문서화하고, 후속 최적화 티켓을 등록해야 합니다."
+    },
+    {
+      "id": "e02",
+      "expected": {
+        "payments-service": "cpu-spike"
+      },
+      "read": [
+        "cpu-spike"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "payments-service": true
+      },
+      "latency_s": 59.09,
+      "cost_usd": 0.007659,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) **모니터링 상태 확인**: payments-service의 CPU 사용률 93.5%, 메모리 56.3%로 상태가 degraded 중이며, 'CPU 91% (threshold 80%)' 및 'payments-service-3 instance responding slow' 알림 발생.  \n2) **요청 패턴 분석**: 요청량 증가 없이 CPU 급증(93.5%) 및 인스턴스 응답 지연(2건 알림) 확인. 정규식 폭주, 무한 루프 등 코드 경로 문제 의심.  \n3) **인스턴스 확장 및 대응**: CPU 90% 이상 지속 시 payments-service-3 인스턴스를 오토스케일링 그룹에서 추가로 띄워 부하 분산. 정상화 후 프로파일링을 통해 핫스팟 코드 최적화 작업 등록."
+    },
+    {
+      "id": "e03",
+      "expected": {
+        "cache-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "memory-leak"
+      ],
+      "hits": 1,
+      "recall": 0.5,
+      "exact": false,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "cache-service": true,
+        "gateway-service": false
+      },
+      "latency_s": 86.22,
+      "cost_usd": 0.010972,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) **cache-service**: 메모리 누수 의심 (메모리 사용률 89.2%, 'memory usage climbing steadily over 6h', 'heap near limit' 알림). Runbook 단계 1-3 수행: 메모리 추세 확인, OOM 직전 시 재시작, 힙 덤프 분석. 최근 배포에 캐시 무제한 증가, 커넥션 미반환 등 패턴 확인 (Runbook 단계 4).  \n2) **gateway-service**: upstream timeout (payments-service 504) 및 네트워크 패킷 손실 3%로, 네트워크/업스트림 서비스 문제 추정. 네트워크 인프라 및 payments-service 상태 점검 필요.  \n3) **롤백 및 메모리 조정**: Runbook 단계 5에 따라 최근 배포 패턴 확인 후 롤백 및 컨테이너 메모리 상한선 재조정 (재발 방지)."
+    },
+    {
+      "id": "e04",
+      "expected": {
+        "log-service": "disk-full"
+      },
+      "read": [
+        "disk-full"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "log-service": true
+      },
+      "latency_s": 56.224,
+      "cost_usd": 0.006536,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 모니터링 상태 확인: log-service 상태가 degraded로 확인됨. CPU 27.7%, 메모리 38.8% 사용 중. 디스크 사용률 95% 이상으로 임계 수준에 도달.  \n2) 디스크 정리: /var/log 디렉터리의 디스크 사용률 95%로 인한 'disk usage 95%' 알림 발생. 로그 파일, 임시 파일, 오래된 백업 등을 우선 삭제해 공간 확보.  \n3) 로그 설정 점검: 로그 로테이션 중단 또는 디버그 로그 레벨 유지로 인한 디스크 공간 소진 가능성 확인. 로그 레벨 조정 및 로테이션 주기 단축 필요."
+    },
+    {
+      "id": "e05",
+      "expected": {
+        "ledger-service": "db-lock"
+      },
+      "read": [
+        "network-timeout"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "network-timeout"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "ledger-service": false
+      },
+      "latency_s": 52.4,
+      "cost_usd": 0.007142,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) **데이터베이스 락 대기 문제**  \n- `Lock wait timeout exceeded` 경고 발생 (차단 세션 37개)  \n- 장기 실행 트랜잭션으로 인한 쓰기 요청 차단 (알림: 'write requests stuck behind a long-running transaction')  \n\n2) **리소스 사용률 점검**  \n- CPU 사용률 21.4% (정상 범위)  \n- 메모리 사용률 51.7% (정상 범위)  \n- 모니터링 상태 'degraded'로 서비스 지연 확정  \n\n3) **즉시 조치 및 원인 분석**  \n- 장기 트랜잭션 및 락 대기 현황 확인 (DB 로그/트랜잭션 목록 분석)  \n- 차단 세션 37개에 대한 트랜잭션 종료 또는 우선순위 조정  \n- 락 대기 시간 임시 상향 조정 (단기 대응)  \n- 장애 원인으로 '락 대기' 및 '장기 트랜잭션' 확정 (네트워크 타임아웃과 구분)"
+    },
+    {
+      "id": "e06",
+      "expected": {
+        "portal-service": "cert-expiry"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "portal-service": false
+      },
+      "latency_s": 63.216,
+      "cost_usd": 0.008461,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) TLS 인증서 만료로 인한 헤이스핸드 실패: portal.example.com의 TLS 인증서가 00:00 UTC에 만료되어 443 포트에서 100% 헤이스핸드 실패 알림 발생.  \n2) 서비스 연결 차단: 인증서 만료로 인해 클라이언트와 서버 간 SSL/TLS 핸드셰이크 실패로 서비스 접근 거부.  \n3) 인증서 재발급 및 구성 검토: 만료된 인증서를 재발급하고, 서버 SSL 설정을 점검하여 헤이스핸드 실패 원인 제거 후 서비스 재시작."
+    },
+    {
+      "id": "e07",
+      "expected": {
+        "search-service": "dns-failure",
+        "notification-service": "queue-backlog"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "search-service": false,
+        "notification-service": false
+      },
+      "latency_s": 47.096,
+      "cost_usd": 0.006312,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) **search-service 장애 진단**  \n- 상태: degraded, CPU 16.8%, 메모리 40.4%  \n- 주요 원인: 'getaddrinfo ENOTFOUND inventory.internal' DNS 해결 실패, 'upstream host lookups failing'으로 인한 연결 실패.  \n- 대응: inventory.internal 도메인의 DNS 설정 점검 및 upstream 서버 연결 상태 확인.  \n\n2) **notification-service 장애 진단**  \n- 상태: degraded, CPU 19.8%, 메모리 46.4%  \n- 주요 원인: 'consumer lag 480k messages on order-events topic'로 인한 메시지 처리 지연, 'oldest unprocessed message is 23 min old'로 인한 지연 누적.  \n- 대응: Kafka 토픽의 consumer lag 모니터링 강화 및 처리 능력 확대(예: consumer 수 증가 또는 파티션 확장).  \n\n3) **일반적 대응 절차**  \n- 모니터링 상태 및 알림 내용 즉시 확인 (예: 'degraded' 상태, 2건의 알림).  \n- 서비스 복구 후, DNS 설정 및 메시지 큐 처리 능력 재점검.  \n- 재발 방지 대책으로 DNS TTL 조정, Kafka 토픽 파티션 확장 등을 문서화."
+    },
+    {
+      "id": "e08",
+      "error": "Server error '500 Internal Server Error' for url 'http://127.0.0.1:8101/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "expected": {
+        "shipping-service": "rate-limit"
+      },
+      "read": [],
+      "recall": 0.0,
+      "hits": 0,
+      "exact": false,
+      "extra": [],
+      "system_hits": {
+        "shipping-service": false
+      },
+      "latency_s": 315.228
+    },
+    {
+      "id": "e09",
+      "error": "[Errno 54] Connection reset by peer",
+      "expected": {
+        "invoice-service": "config-error"
+      },
+      "read": [],
+      "recall": 0.0,
+      "hits": 0,
+      "exact": false,
+      "extra": [],
+      "system_hits": {
+        "invoice-service": false
+      },
+      "latency_s": 0.022
+    },
+    {
+      "id": "e10",
+      "error": "timed out",
+      "expected": {
+        "inventory-service": "thread-pool-exhaustion",
+        "reporting-service": "replication-lag"
+      },
+      "read": [],
+      "recall": 0.0,
+      "hits": 0,
+      "exact": false,
+      "extra": [],
+      "system_hits": {
+        "inventory-service": false,
+        "reporting-service": false
+      },
+      "latency_s": 400.024
+    },
+    {
+      "id": "e11",
+      "error": "Server error '500 Internal Server Error' for url 'http://127.0.0.1:8101/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+      "expected": {
+        "recommend-service": "memory-leak"
+      },
+      "read": [],
+      "recall": 0.0,
+      "hits": 0,
+      "exact": false,
+      "extra": [],
+      "system_hits": {
+        "recommend-service": false
+      },
+      "latency_s": 319.456
+    },
+    {
+      "id": "e12",
+      "error": "[Errno 54] Connection reset by peer",
+      "expected": {
+        "ledger-service": "db-lock",
+        "recommend-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [],
+      "recall": 0.0,
+      "hits": 0,
+      "exact": false,
+      "extra": [],
+      "system_hits": {
+        "ledger-service": false,
+        "recommend-service": false,
+        "gateway-service": false
+      },
+      "latency_s": 0.041
+    }
+  ]
+}
