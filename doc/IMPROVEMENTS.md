@@ -47,9 +47,11 @@ runbook 선택기 단독(selector_cases 40건) top-1 — `eval/results/selector_
 | 5 | 계획(plan)에 runbook 조회가 없어서 **모든** 장애 요청이 replan_check에서 "runbook 없음 → 추가 조사" 라운드를 탔다. 재계획이 예외 처리가 아니라 정상 경로였다. | **Dynamic Planning 재정의**: runbook 선택이 계획된 단계가 됐고, replan_check는 "장애 시스템마다 runbook이 붙었는가"를 검사한다. 빠진 시스템이 있을 때만 1회 다시 조사한다 — 선택기가 실패한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다. |
 | 6 | `agent/graph.py` 한 파일에 노드 10개·규칙·상태가 다 있었다. | **모듈화**: `state.py`, `rules.py`, `runbook_selector.py`, `agents/`, `nodes/`(파일 하나에 노드 하나). |
 | 7 | 선택 방식을 바꾸려면 노드 코드를 고쳐야 했다. | **DI**: `SupervisorDeps.runbook_selector`. 서버가 `RUNBOOK_SELECTOR`로 만들어 주입하고, 노드는 `selector.select()`만 부른다. |
-| 8 | 테스트가 없었다. | **pytest 87개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
+| 8 | 테스트가 없었다. | **pytest 97개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
 | 9 | Before/After를 잴 방법이 없었다. | **`eval/run_eval.py`**: selector / threshold / e2e / compare 서브커맨드. 개선 전 서버에도 그대로 돌아간다. |
 | 10 | (실모델에서 발견) 소형 모델(qwen3:0.6b)이 계획에서 시스템명을 틀리게 쓰면, 보정 코드가 그 이름을 '쿼리에서 처음 나온 시스템'으로 바꾸고 중복으로 버려 **그 시스템 조사가 통째로 빠졌다** (e10 reporting-service, e12 recommend-service·gateway-service). | **계획 보정**: 쿼리에 이름이 그대로 나온 시스템은 모델이 빠뜨려도 항상 조사한다(`ollama_llm.py`·`openai_llm.py`의 `plan()`). 모델 판단을 코드로 바로잡는 권위 게이트와 같은 원칙. 재현 테스트 `tests/test_plan_guard.py`. |
+| 11 | 최종안에 서비스 재시작·롤백·세션 강제 종료 같은 조치가 있어도 그대로 내보냈다. | **사람 승인(HITL)**: validate를 통과한 최종안에서 위험 조치 문장을 코드로 찾고(`agent/nodes/approval.py`), 있으면 LangGraph `interrupt()`로 멈춘다. 승인하면 그대로, 거부하면 그 조치를 빼라는 피드백으로 한 번 다시 쓴다(다시 쓴 안도 거부하면 "보류" 표시를 붙여 내보낸다). 요청에 `hitl=true`일 때만 동작한다 — 웹 화면은 켜고, API·평가는 기본으로 끈다. |
+| 12 | 실모델 백엔드가 Ollama·OpenAI뿐이었다. | **Claude 백엔드**: `LLM_BACKEND=anthropic`(`agent/anthropic_llm.py`, 기본 `claude-haiku-5-5`). 실험·개선에 사용(§6.5). route·plan은 json_schema 구조화 출력, chat·write는 토큰 스트리밍. |
 
 ## 2. 새 그래프
 
@@ -76,7 +78,9 @@ flowchart TB
     Analysis --> Write["write"]
     Write --> Validate["validate"]
     Validate -->|불합격| Write
-    Validate -->|합격| Finalize["finalize"]
+    Validate -->|합격| Approval["approval<br/>위험 조치 있으면 interrupt (hitl일 때)"]
+    Approval -->|"승인 / 위험 조치 없음 / 두 번째 거부(보류 표시)"| Finalize["finalize"]
+    Approval -->|"거부 (1회) — 그 조치를 빼고 다시"| Write
 
     Select -. "find_tool → call_tool" .-> SearchTool["MCP Tool search_runbook<br/>(bge-m3 + BM25, RRF)"]
     Read -. "find_resource_template → read_resource" .-> RunbookRes["MCP Resource<br/>runbook://incident-response/{type}"]
@@ -97,6 +101,10 @@ flowchart LR
     F -->|예| K
     F -->|아니오| R["RAG top-1 채택"]
 ```
+
+사람 승인은 체크포인터가 있어야 멈춘 상태를 들고 있을 수 있다. 서버는 `InMemorySaver`를 하나 두고, 요청마다 체크포인트 thread를 새로 만든다(`run_id = thread_id:랜덤 8자`). 같은 대화의 이전 요청 상태가 다음 요청에 섞이지 않게 하려는 것이고, 대화 이력은 원래대로 SQLite가 들고 있다(최종 답변이 나온 뒤에만 기록). 멈추면 `/chat`은 `status=approval_required`와 `run_id`를, `/chat/stream`은 `ApprovalRequired` 이벤트를 보낸다. `POST /chat/approve`(JSON) 또는 `GET /chat/resume`(SSE)이 `Command(resume={"approved", "comment"})`로 이어서 실행한다.
+
+실행 화면(Claude Haiku 5.5, ledger-service): 승인 요청 `doc/captures/hitl_approval_request.png` → 사유를 적어 거부한 뒤 세션 강제 종료를 뺀 재작성 `doc/captures/hitl_after_reject.png`.
 
 `/chat/stream`은 `subgraphs=True`로 스트리밍해서 서브 에이전트 안쪽 노드(collect_metrics, select_runbooks, read_runbooks)가 끝날 때마다 이벤트가 나간다. 이벤트에 `node`와 `agent`(어느 서브 에이전트인지)가 붙는다. runbook_agent가 내는 이벤트는 `RunbookSelected`, `RunbookSkipped`(정상 / 모니터링에 없는 시스템), `TaskCompleted`, `RunbookShared`(이미 읽은 유형에 시스템 추가), `RunbookReadFailed`다.
 
@@ -119,11 +127,15 @@ flowchart LR
 | `agent/deps.py` | 수정 | `runbook_selector: Any = None` (마지막 필드, 기본값 있음) |
 | `agent/fake_llm.py` | 수정 | write가 runbook **전부**를 수집 순서대로, 적용 시스템과 함께 쓴다. runbook이 없으면 `2) 적용할 runbook 없음` (결정론 유지) |
 | `agent/ollama_llm.py`, `agent/openai_llm.py` | 수정 | write의 사실 목록에 runbook별 적용 시스템 표시 |
-| `server.py` | 수정 | lifespan에서 선택기 생성·주입(v1이면 만들지 않음), `/health`·metadata에 선택기 정보(v1은 `null`), SSE `subgraphs=True` |
-| `web_chat.html` | 수정 | `RunbookSelected`(점수·방식·폴백 사유), `RunbookSkipped`(정상/미등록 구분), `RunbookShared`, `RunbookReadFailed`, `ReplanCheck` 목록 target, 헤더에 선택기 |
+| `agent/nodes/approval.py` | 신규 | 사람 승인 노드 — `find_risky_actions`(위험 조치 문장 최대 5개), `interrupt()`, 승인/거부 처리 |
+| `agent/anthropic_llm.py` | 신규 | Claude 백엔드 (`AnthropicFastLLM`·`AnthropicQualityLLM`, 기본 claude-haiku-5-5). 실제 단가로 비용 계산 |
+| `server.py` | 수정 | lifespan에서 선택기 생성·주입(v1이면 만들지 않음), `/health`·metadata에 선택기 정보(v1은 `null`), SSE `subgraphs=True`. 체크포인터·승인 대기 목록, `POST /chat/approve`, `GET /chat/resume`, `LLM_BACKEND=anthropic` |
+| `web_chat.html` | 수정 | `RunbookSelected`(점수·방식·폴백 사유), `RunbookSkipped`(정상/미등록 구분), `RunbookShared`, `RunbookReadFailed`, `ReplanCheck` 목록 target, 헤더에 선택기. 헤더의 "사람 승인" 체크박스, 승인 카드(승인/거부·사유) |
+| `web_demo_server.py` | 수정 | `/chat/resume`·`/chat/approve` 중계, 쿼리 파라미터 그대로 전달 |
 | `data/runbooks/*.md`, `data/monitoring.json` | 수정·신규 | runbook 14종, 시스템 15개 |
 | `eval/*` | 신규 | 평가셋, `check_data.py`, `run_eval.py`, `results/` |
-| `tests/*`, `pytest.ini` | 신규 | pytest 87개 (`test_plan_guard.py`: 계획 보정 재현 5개 포함) |
+| `tests/*`, `pytest.ini` | 신규 | pytest 97개 (`test_plan_guard.py`: 계획 보정 재현 7개, `test_approval.py`: 사람 승인 8개 포함) |
+| `eval/base_patch/` | 신규 | 개선 전 코드를 Claude로 돌리는 평가 전용 어댑터와 적용법 |
 
 ## 4. 설계 이유와 트레이드오프
 
@@ -168,6 +180,10 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 | `RAG_EMBED_MODEL` | `bge-m3` | Ollama 임베딩 모델 (캐시 파일도 모델별) |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | 임베딩용 Ollama 주소 |
 | `SUPERVISOR_VERSION` | `v2` | `v1`이면 legacy 선형 파이프라인 (선택기를 만들지 않고 `/health`의 `runbook_selector`는 `null`) |
+| `LLM_BACKEND` | `fake` | `fake` / `ollama` / `openai` / `anthropic` |
+| `ANTHROPIC_API_KEY` | (없음) | `anthropic`일 때 필요. `.env`에 넣는다 |
+| `ANTHROPIC_FAST_MODEL`, `ANTHROPIC_QUALITY_MODEL` | `claude-haiku-5-5` | Claude 모델 |
+| `ANTHROPIC_EFFORT` / `ANTHROPIC_THINKING` | `low` / `off` | 생각 깊이. 기본은 빠르게 |
 
 개선 전 코드와 비교할 때는 원본 폴더를 `.env` 없이 다른 곳에 복사하고, 복사본의 `data/monitoring.json`과 `data/runbooks/`를 이 폴더 것으로 덮은 뒤 같은 `.venv` 파이썬으로 띄운다(원본 폴더에 session.db가 생기지 않게, 데이터 차이가 섞이지 않게). 이번 측정은 그렇게 했다.
 
@@ -298,6 +314,26 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 - 개선 후 결과에서 e10·e12는 선택기가 고른 시스템이 하나뿐이었다(`selections`에 inventory-service, ledger-service만 있음). 같은 알림으로 선택기만 다시 돌리면 다섯 시스템 모두 정답이 나와서, 선택이 아니라 **계획 단계에서 시스템이 빠진 것**으로 좁혔다 → §1의 10번 변경.
 - 계획 보정 후 재측정 결과는 위 표다.
 
+### 6.5 실모델 전체 평가 (Claude Haiku 5.5)
+
+`LLM_BACKEND=anthropic`, fast·quality 모두 claude-haiku-5-5(thinking 끔, effort low) + 임베딩 bge-m3. 개선 전 코드는 Base에 전송 계층만 바꾼 어댑터(`eval/base_patch/`)로 돌렸다.
+
+| 지표 | 개선 전 코드 | 개선 후 + hybrid |
+|---|---|---|
+| 결과 파일 | `e2e_before-haiku_20261022-103346.json` | `e2e_after-haiku_20261022-103152.json` |
+| 정답 runbook (17쌍) | 5/17 | **16/17** |
+| └ 원본 5개 시스템 (6쌍) | 5/6 | 5/6 |
+| └ 신규 9개 시스템 (11쌍) | 0/11 | 11/11 |
+| 케이스 정확 일치율 | 0.25 | 0.917 |
+| 불필요하게 읽은 runbook | 7 | 1 |
+| 지연 중앙값 / 최대 (s) | 9.203 / 12.371 | 9.18 / 12.57 |
+| 비용 합계 (USD, 실제 단가) | 0.009758 | 0.010648 (+9%) |
+| 검증 시도 평균 | 1 | 1 |
+| 요청 오류 | 0 | 0 |
+
+- 정답 수는 fake·qwen3:0.6b와 같고, 유일한 오답도 같은 e03 cache-service(RRF 동점, §6.2)다.
+- 지연 차이 없음, 비용 +9%(qwen3:0.6b는 +3.1s, +58%). 검증 시도 평균 1.
+
 ## 7. 한계
 
 - **데이터가 작고 합성이다.** selector 40건(1건 = 2.5%p), e2e 12건(정답 쌍 17개). 소수점 차이에는 의미를 두지 않는다.
@@ -309,4 +345,5 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 - **MCPClient lock.** 원본 MCPClient는 호출 하나가 끝날 때까지 lock을 잡는다. 시스템별 search_runbook을 `asyncio.gather`로 동시에 불러도 실제로는 한 줄로 서고, 검색이 느려지면 같은 서버의 다른 요청도 기다린다. 질의 타임아웃(5s)과 서킷 브레이커로 최악을 5s 정도로 묶었을 뿐 구조는 그대로다.
 - **BM25 토크나이저가 단순하다.** 형태소 분석 없이 한글 어절 + 글자 bigram이다. 조사 붙은 단어는 bigram으로 어느 정도 잡지만 동의어·약어는 못 잡는다.
 - **벡터 DB 없이 numpy 내적.** runbook 14종·청크 124개라 전수 비교로 충분하다. 문서가 수천 개로 늘면 ANN 인덱스(벡터 DB)가 필요하다. MCP 서버가 뜰 때 인덱스를 한 번 만들므로 runbook을 고치면 서버를 재시작해야 한다.
+- **위험 조치 탐지는 단어 목록이다.** "재시작은 임시 조치일 뿐" 같은 설명 문장도 걸리고, 목록에 없는 표현("파드를 내린다")은 놓친다. 오탐은 사람이 승인 한 번으로 넘기면 되지만 미탐은 그대로 나간다. 승인 대기 상태는 메모리(`InMemorySaver`)에 있어 서버를 재시작하면 사라지고, 대기 시간 제한도 없다.
 - **fake LLM 결과는 선택 품질만 보여 준다.** 답변 문장 품질은 실모델(Ollama/OpenAI) e2e로 따로 봐야 한다. 지연은 모두 1회 실행 값이다.

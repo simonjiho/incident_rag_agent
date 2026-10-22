@@ -75,11 +75,26 @@
     color: white; font-size: 14px; cursor: pointer;
   }
   button:disabled { background: #3a3a52; cursor: default; }
+  header label { float: right; font-weight: 400; font-size: 13px; color: #c3c3e0; cursor: pointer; }
+  header label input { flex: none; padding: 0; margin: 0 4px 0 0; vertical-align: -1px; }
+  .approval {
+    flex-shrink: 0; max-width: 70%; background: #2b2417; border: 1px solid #8a6a2a;
+    border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5;
+  }
+  .approval .title { font-weight: 600; color: #f0c674; margin-bottom: 6px; }
+  .approval ul { margin: 0 0 10px; padding-left: 18px; color: #e6dcc6; }
+  .approval .actions { display: flex; gap: 8px; align-items: center; }
+  .approval .actions input { padding: 7px 10px; font-size: 13px; }
+  .approval .actions button { padding: 7px 14px; font-size: 13px; }
+  .approval button.reject { background: #8a3a3a; }
+  .approval .decided { color: #c3c3e0; }
 </style>
 </head>
 <body>
 <div id="app">
-  <header>운영 인시던트 대응 에이전트 <span>{{ backendLabel }}</span></header>
+  <header>운영 인시던트 대응 에이전트 <span>{{ backendLabel }}</span>
+    <label title="재시작·롤백 같은 조치가 든 답변은 담당자 승인 후 내보낸다"><input type="checkbox" v-model="hitl" />사람 승인</label>
+  </header>
   <div id="log" ref="logEl">
     <template v-for="item in log" :key="item.id">
       <div v-if="item.kind === 'user'" class="row user">
@@ -92,6 +107,17 @@
 
       <div v-else-if="item.kind === 'agent'" class="row agent">
         <div class="bubble">{{ item.text }}</div>
+      </div>
+
+      <div v-else-if="item.kind === 'approval'" class="approval">
+        <div class="title">⚠️ 담당자 승인이 필요한 조치{{ item.round ? ' (다시 쓴 안)' : '' }}</div>
+        <ul><li v-for="(a, i) in item.actions" :key="i">{{ a }}</li></ul>
+        <div v-if="!item.decided" class="actions">
+          <input v-model="item.comment" placeholder="거부 사유 (선택)" />
+          <button @click="decide(item, true)">승인</button>
+          <button class="reject" @click="decide(item, false)">거부</button>
+        </div>
+        <div v-else class="decided">{{ item.decided }}</div>
       </div>
 
       <details v-else-if="item.kind === 'prompt'" class="prompt-box">
@@ -146,6 +172,9 @@ const STEP_LABELS = {
   },
   DraftWritten: e => `답변 초안 작성 (시도 ${e.attempt})`,
   Validation: e => e.verdict === '합격' ? '검수 통과' : '검수 반려 → 다시 작성',
+  ApprovalSkipped: () => '위험 조치 없음 — 승인 생략',
+  ApprovalDecision: e => e.approved ? '담당자 승인'
+      : (e.rewrite ? '담당자 거부 → 그 조치를 빼고 다시 작성' : '담당자 거부 → 보류 표시 후 완성'),
   Finalize: () => '최종 답변 완성',
 };
 
@@ -155,6 +184,7 @@ createApp({
     const log = ref([]);
     const input = ref('');
     const sending = ref(false);
+    const hitl = ref(true);   // 사람 승인 단계 (헤더 체크박스)
     const logEl = ref(null);
     const thread = 't-web-' + Math.random().toString(36).slice(2, 8);
     let nextId = 0;
@@ -171,23 +201,12 @@ createApp({
       if (logEl.value) logEl.value.scrollTop = logEl.value.scrollHeight;
     }
 
-    function onSubmit() {
-      const text = input.value.trim();
-      if (!text) return;
-
-      log.value.push({ id: nextId++, kind: 'user', text });
-      input.value = '';
-      sending.value = true;
-      scrollToBottom();
-
-      const stepsItem = reactive({ id: nextId++, kind: 'steps', steps: [] });
-      log.value.push(stepsItem);
-      scrollToBottom();
-
-      const url = `/chat/stream?message=${encodeURIComponent(text)}&thread_id=${encodeURIComponent(thread)}`;
+    // SSE 한 줄기를 처리한다 — 새 질문과 승인 후 재개가 같이 쓴다.
+    // carry: 재개할 때 이어 쓸 말풍선(승인이면 초안 말풍선이 그대로 최종 답변이 된다)
+    function runStream(url, stepsItem, carry = {}) {
       const es = new EventSource(url);
-      let streamItem = null;
-      let streamAttempt = null;   // write_node 재작성(attempt 증가) 시 새 말풍선으로 끊는다
+      let streamItem = carry.item || null;
+      let streamAttempt = carry.attempt ?? null;   // write_node 재작성(attempt 증가) 시 새 말풍선으로 끊는다
 
       es.onmessage = (event) => {
         if (event.data === '[DONE]') { es.close(); sending.value = false; return; }
@@ -201,6 +220,14 @@ createApp({
             streamAttempt = e.attempt;
           }
           streamItem.text += e.delta;
+          scrollToBottom();
+          return;
+        }
+
+        if (e.type === 'ApprovalRequired') {
+          log.value.push(reactive({ id: nextId++, kind: 'approval', run_id: e.run_id,
+            actions: e.actions || [], round: e.round || 0, comment: '', decided: '',
+            carry: { item: streamItem, attempt: streamAttempt } }));
           scrollToBottom();
           return;
         }
@@ -229,7 +256,34 @@ createApp({
       es.onerror = () => { es.close(); sending.value = false; };
     }
 
-    return { backendLabel, log, input, sending, logEl, onSubmit };
+    function onSubmit() {
+      const text = input.value.trim();
+      if (!text || sending.value) return;
+
+      log.value.push({ id: nextId++, kind: 'user', text });
+      input.value = '';
+      sending.value = true;
+      scrollToBottom();
+
+      const stepsItem = reactive({ id: nextId++, kind: 'steps', steps: [] });
+      log.value.push(stepsItem);
+      scrollToBottom();
+
+      runStream(`/chat/stream?message=${encodeURIComponent(text)}&thread_id=${encodeURIComponent(thread)}`
+        + (hitl.value ? '&hitl=true' : ''), stepsItem);
+    }
+
+    function decide(item, approved) {
+      item.decided = approved ? '✓ 승인함' : `✕ 거부함${item.comment ? ` (사유: ${item.comment})` : ''}`;
+      sending.value = true;
+      const stepsItem = reactive({ id: nextId++, kind: 'steps', steps: [] });
+      log.value.push(stepsItem);
+      scrollToBottom();
+      runStream(`/chat/resume?run_id=${encodeURIComponent(item.run_id)}&approved=${approved}`
+        + `&comment=${encodeURIComponent(item.comment || '')}`, stepsItem, item.carry);
+    }
+
+    return { backendLabel, log, input, sending, logEl, hitl, onSubmit, decide };
   },
 }).mount('#app');
 </script>

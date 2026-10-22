@@ -16,7 +16,9 @@ Base(`all_total_vue`)는 장애 시스템의 모니터링 알림 문구를 **키
 | 재계획 | runbook이 없으면 항상 1회 | 선택·조회에 실패한 시스템만 1회 재시도 |
 | 구조 | `graph.py` 한 파일 | `agent/nodes/`, `agent/agents/`, `agent/rules.py`, `rag/` 로 분리, 선택기는 의존성 주입 |
 | 계획 보정 | 소형 모델이 시스템명을 틀리면 그 시스템 조사가 빠짐 | 질의에 이름이 나온 시스템은 항상 조사 (실모델 평가에서 발견) |
-| 검증 | 없음 | pytest 87개, 평가 스크립트 `eval/run_eval.py` |
+| 사람 승인 | 재시작·롤백 같은 조치도 그대로 내보냄 | 위험 조치가 든 최종안은 `interrupt()`로 멈추고 담당자 승인/거부 (거부하면 그 조치를 빼고 다시 작성) |
+| LLM 백엔드 | fake · Ollama · OpenAI | + Claude(`LLM_BACKEND=anthropic`, Haiku 5.5) — 구조화 출력·토큰 스트리밍 |
+| 검증 | 없음 | pytest 97개, 평가 스크립트 `eval/run_eval.py` |
 
 ## 결과 (요약)
 
@@ -29,7 +31,13 @@ e2e 12건(정답 (시스템, runbook) 쌍 17개), fake LLM(결정론), 세 서�
 | 불필요하게 읽은 runbook | 7 | 9 | 1 |
 | 지연 중앙값 (s) | 0.736 | 0.74 | 0.798 |
 
-실모델(qwen3:0.6b + bge-m3, 같은 12건)에서도 정답 runbook 5/17 → 16/17, 요청 오류 0. 대가는 지연 중앙값 +3.1s, 가상 비용 +58%.
+실모델에서도 같다 (개선 전·후 같은 모델).
+
+| 실모델 (12건) | 정답 runbook | 지연 중앙값 (s) | 비용 |
+|---|---|---|---|
+| qwen3:0.6b 개선 전 → 후 | 5/17 → **16/17** | 12.3 → 15.4 | +58% (가상 단가) |
+| Claude Haiku 5.5 개선 전 → 후 | 5/17 → **16/17** | 9.2 → 9.2 | +9% (실제 단가, 2회 합계 약 2센트) |
+
 
 runbook 선택기 단독(40건) top-1: 키워드 규칙 30.0% · BM25 62.5% · **hybrid 82.5%** · vector 90.0%.
 키워드 규칙의 30%는 평가셋을 "규칙이 약한 경우 70%"로 설계한 값이라 규칙의 실제 정확도가 아니다.
@@ -41,7 +49,7 @@ runbook 선택기 단독(40건) top-1: 키워드 규칙 30.0% · BM25 62.5% · *
 bash sh/setup_venv.sh        # .venv + requirements (최초 1회)
 bash sh/setup_ollama.sh      # qwen3:0.6b · qwen3:8b · bge-m3 (있으면 재사용)
 cp .env.example .env         # LangSmith 키를 쓰려면 채운다 (.env는 커밋하지 않음)
-bash sh/run_agent_ollma.sh   # 백엔드 :8100 (OpenAI는 run_agent_openai.sh, 과금)
+bash sh/run_agent_ollma.sh   # 백엔드 :8100 (Claude는 run_agent_anthropic.sh, OpenAI는 run_agent_openai.sh — 과금)
 bash sh/run_frontend.sh      # 새 터미널에서, http://localhost:8600
 ```
 
@@ -51,11 +59,16 @@ bash sh/run_frontend.sh      # 새 터미널에서, http://localhost:8600
 | `RAG_MIN_SCORE` | `0.52` | RAG top-1 cosine이 이보다 낮으면 키워드 규칙으로 폴백 |
 | `RAG_EMBED_MODEL` | `bge-m3` | Ollama 임베딩 모델 |
 | `SUPERVISOR_VERSION` | `v2` | `v1`이면 legacy 선형 파이프라인 |
+| `LLM_BACKEND` | `fake` | `fake` / `ollama` / `openai` / `anthropic` |
+| `ANTHROPIC_API_KEY` | (없음) | Claude 백엔드용, `.env`에만 넣는다 |
+
+사람 승인: 웹 화면 헤더의 "사람 승인"이 켜져 있으면 위험 조치가 든 답변 아래에 승인 카드가 뜬다.
+API로는 `POST /chat`에 `"hitl": true` → `status=approval_required`와 `run_id`를 받고, `POST /chat/approve {"run_id", "approved", "comment"}`로 이어 간다.
 
 ## 테스트 · 평가 재현
 
 ```bash
-.venv/bin/python -m pytest -q                       # 87 passed, Ollama 불필요
+.venv/bin/python -m pytest -q                       # 97 passed, Ollama 불필요
 .venv/bin/python eval/tools/check_data.py           # 평가 데이터 정합성·누수 검사
 .venv/bin/python eval/run_eval.py selector          # 선택기 단독 (bge-m3 필요)
 LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app --port 8100
@@ -69,13 +82,14 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 
 ```
 agent/
-├── graph.py              # 조립만: route → plan → gate → monitoring_agent → runbook_agent → replan_check → analysis → write → validate → finalize
-├── nodes/                # 노드 하나에 파일 하나
+├── graph.py              # 조립만: route → plan → gate → monitoring_agent → runbook_agent → replan_check → analysis → write → validate → approval → finalize
+├── nodes/                # 노드 하나에 파일 하나 (approval.py: 사람 승인)
 ├── agents/
 │   ├── monitoring_agent.py   # 서브그래프: get_monitoring_status 병렬 + 재시도
 │   └── runbook_agent.py      # 서브그래프: 시스템별 선택 → 유형별 1회 조회
 ├── runbook_selector.py   # KeywordSelector / McpRagSelector, 폴백 판단
 ├── rules.py              # 개선 전 키워드 규칙 (폴백과 기준선용)
+├── anthropic_llm.py      # Claude 백엔드 (Haiku 5.5)
 └── state.py
 rag/                      # embedder(bge-m3, 디스크 캐시) · bm25 · index(vector/bm25/hybrid RRF)
 mcp_server.py             # + Tool search_runbook

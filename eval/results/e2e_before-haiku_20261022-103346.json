@@ -1,0 +1,349 @@
+{
+  "kind": "e2e",
+  "label": "before-haiku",
+  "created": "20261022-103346",
+  "base_url": "http://127.0.0.1:8125",
+  "health": {
+    "status": "ok",
+    "instance_id": 4580766288,
+    "creation_count": 1,
+    "supervisor_version": "v2",
+    "llm_backend": "anthropic",
+    "fast_llm": "anthropic:claude-haiku-5-5",
+    "quality_llm": "anthropic:claude-haiku-5-5"
+  },
+  "summary": {
+    "cases": 12,
+    "errors": 0,
+    "mean_recall": 0.319,
+    "micro_recall": 0.294,
+    "hits": 5,
+    "expected_total": 17,
+    "hits_base_systems": "5/6",
+    "hits_new_systems": "0/11",
+    "exact_rate": 0.25,
+    "pair_accuracy": null,
+    "extra_runbooks": 7,
+    "latency_mean_s": 9.293,
+    "latency_median_s": 9.203,
+    "latency_max_s": 12.371,
+    "cost_usd_total": 0.009758,
+    "retries_total": 1,
+    "validation_attempts_mean": 1,
+    "replan_rate": 1.0
+  },
+  "cases": [
+    {
+      "id": "e01",
+      "expected": {
+        "auth-service": "high-latency"
+      },
+      "read": [
+        "high-latency"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "auth-service": true
+      },
+      "latency_s": 9.512,
+      "cost_usd": 0.000766,
+      "retry_count": 1,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 현황 확인: auth-service 상태는 degraded이며 CPU 83.4%, 메모리 63.7%입니다. 알림은 'p95 latency 2.4s (threshold 1.0s)'와 'connection pool 92% used' 2건입니다. p95가 임계치 1.0s의 약 2.4배이고, 커넥션 풀 사용률은 runbook의 조치 기준인 90%를 넘었습니다.\n\n2) 원인 가설: runbook의 '응답 지연' 증상(커넥션 풀 90% 이상, p95 지연 증가)과 수집된 수치가 일치합니다. 커넥션 대기 또는 풀 고갈로 요청이 적체되면서 CPU 부하와 지연이 함께 올라간 것으로 보입니다. 다만 슬로우 쿼리 로그, 캐시 히트율, 리전·인스턴스별 분포, 스레드 수와 RejectedExecutionException/503 여부는 현재 수집된 사실에 없으므로 확정할 수 없습니다. 비교 대상 시스템이 없어 교차 분석도 불가능합니다.\n\n3) 즉시 조치 (runbook 절차 2 적용): 커넥션 풀 사용률이 90%를 넘었으므로 풀 크기를 늘리는 방안을 검토하고, 느린 쿼리 및 외부 API 호출에 타임아웃을 설정하십시오. 풀 증설 전후로 DB 부하가 감당 가능한지 함께 확인하십시오.\n\n4) 경과 관찰 및 에스컬레이션 (절차 3~4): 특정 인스턴스에 지연이 몰려 있는지 확인하고, 해당되면 로드밸런서에서 일시 제외하십시오. 5분 내 p95가 1.0s 아래로 내려오지 않으면 캐시 계층이나 읽기 복제본으로 트래픽을 분산하십시오.\n\n5) 사후 조치 (절차 5): 정상화 후 슬로우 쿼리 로그를 분석해 근본 원인을 문서화하고, 후속 최적화 티켓을 등록하십시오."
+    },
+    {
+      "id": "e02",
+      "expected": {
+        "payments-service": "cpu-spike"
+      },
+      "read": [
+        "cpu-spike"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "payments-service": true
+      },
+      "latency_s": 6.251,
+      "cost_usd": 0.000569,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 현황 요약: payments-service 상태는 degraded이며, CPU 사용률 98.4%, 메모리 58.7%입니다. 알림은 2건입니다: 'CPU 91% (threshold 80%)'와 'payments-service-3 instance responding slow'. 수집된 사실 기준으로 CPU 급증과 payments-service-3 응답 지연이 함께 나타나고 있습니다.\n\n2) 원인 분류: runbook의 'CPU 급증 대응 절차'에 해당하는 증상으로 보입니다. 다만 현재 수집된 사실에는 load average, 스레드 상태(RUNNABLE/WAITING/BLOCKED 분포), 최근 배포 시점, 요청량 변화, steal time(%st) 정보가 없어 특정 원인(무한 루프, 배치 중복 실행, 노이지 네이버 등)은 확정할 수 없습니다. 메모리가 58.7%로 안정적이므로 메모리 누수 절차보다는 CPU 절차가 우선입니다.\n\n3) 권장 조치: (a) 최근 배포 여부와 급증 시작 시각을 먼저 확인하고, 배포 직후라면 직전 배포 롤백을 검토합니다. (b) payments-service-3에서 top/pidstat과 스레드 덤프를 채취해 RUNNABLE 편중 여부와 점유 프로세스를 확인합니다. (c) CPU가 90% 이상으로 지속되면 오토스케일링 그룹에 인스턴스를 한 대 추가해 부하를 분산합니다. (d) 정상화 후 프로파일링으로 핫스팟 코드를 식별해 최적화 작업을 등록합니다."
+    },
+    {
+      "id": "e03",
+      "expected": {
+        "cache-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "memory-leak"
+      ],
+      "hits": 1,
+      "recall": 0.5,
+      "exact": false,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "cache-service": true,
+        "gateway-service": false
+      },
+      "latency_s": 10.232,
+      "cost_usd": 0.000865,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 상태 요약\n- cache-service: degraded, CPU 43.0%, 메모리 89.5%. 알림 \"memory usage climbing steadily over 6h\", \"heap near limit\"는 runbook의 메모리 누수 증상과 일치합니다.\n- gateway-service: degraded, CPU 30.9%, 메모리 45.5%. 알림 \"upstream timeout to payments-service (504)\", \"network packet loss 3%\"는 메모리 누수 증상과 맞지 않으며 네트워크/업스트림 문제 쪽입니다.\n\n2) 원인 판단\n- cache-service: 6시간에 걸친 메모리 상승과 heap 한계 근접은 메모리 누수 패턴으로 판단됩니다. 다만 현재 수집된 데이터만으로는 어떤 객체가 쌓이는지 확정할 수 없습니다. 힙 덤프 또는 프로파일링으로 확인이 필요합니다.\n- gateway-service: 504 타임아웃과 3% 패킷 손실은 payments-service 방향 네트워크 구간 문제일 가능성이 있습니다. runbook 기준으로는 메모리 누수와 무관한 증상입니다.\n- 두 서비스의 직접적인 연관성은 현재 근거가 부족합니다. 패킷 손실이 cache 메모리 문제를 유발했다는 근거는 없습니다.\n\n3) 권장 조치 (runbook 순서 기준)\n- cache-service: 메모리 사용률 90% 이상으로 OOM 임박 여부를 즉시 확인하고, 그 경우 재시작으로 서비스 중단을 막되 임시 조치임을 기록합니다. 이후 힙 덤프로 누적 객체를 식별하고, 최근 배포에서 캐시 무제한 증가, 커넥션 미반환, 리스너 중복 등록 변경이 있었는지 점검하여 해당 배포를 롤백합니다.\n- gateway-service: payments-service 구간의 네트워크 상태(패킷 손실 경로, 504 발생 빈도)를 점검하고 payments-service 자체의 상태도 확인합니다. 메모리 누수 절차는 적용하지 않습니다.\n- 공통: 두 서비스 모두 degraded이므로 현재 수집된 사실만으로는 공통 원인을 단정하지 않습니다. 추가 로그와 메트릭 수집 후 재판단이 필요합니다."
+    },
+    {
+      "id": "e04",
+      "expected": {
+        "log-service": "disk-full"
+      },
+      "read": [
+        "disk-full"
+      ],
+      "hits": 1,
+      "recall": 1.0,
+      "exact": true,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "log-service": true
+      },
+      "latency_s": 7.912,
+      "cost_usd": 0.000727,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 진단 요약\n- web-01: 상태 healthy, CPU 40.8%, 메모리 51.4%, 알림 0건으로 정상이며 이번 장애와 무관해 보입니다.\n- log-service: 상태 degraded, CPU 21.5%, 메모리 35.7%로 자원 자체는 여유가 있으나 /var/log 디스크 사용률 95%와 \"disk space low\" 알림 2건이 발생해 장애 원인은 디스크 용량 부족으로 판단됩니다.\n- 두 서버 간 공통 원인은 보이지 않으며, log-service의 로그 누적이 가장 유력한 원인입니다.\n\n2) 즉시 조치 (수집된 runbook 기준)\n- log-service에서 `df -h`, `df -i`로 실제 사용률과 inode 상태를 확인합니다. 사용률 95%는 임계치(90%) 이상이므로 즉시 대응이 필요합니다.\n- 안전하게 삭제 가능한 오래된 로그, 임시 파일, 오래된 백업/덤프/core 파일부터 정리해 여유 공간을 확보합니다.\n- 특정 프로세스가 로그를 비정상적으로 쌓고 있는지 확인하고, 디버그 로그 레벨이면 낮추고 로테이션 주기를 단축합니다.\n- 정리로 부족하면 /var/log 볼륨 확장 또는 추가 스토리지 연결을 검토합니다.\n\n3) 재발 방지\n- 정상화 후 로그 보존 정책(보존 기간, 로테이션 설정)을 재검토합니다.\n- 디스크 사용률 알림 임계값을 조정해 90% 도달 전에 조기 감지되도록 합니다.\n- 정상화 후 log-service 상태가 healthy로 복귀했는지 모니터링으로 확인합니다."
+    },
+    {
+      "id": "e05",
+      "expected": {
+        "ledger-service": "db-lock"
+      },
+      "read": [
+        "network-timeout"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "network-timeout"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "ledger-service": false
+      },
+      "latency_s": 8.759,
+      "cost_usd": 0.000726,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 현상 정리: ledger-service 상태는 degraded이며 CPU 26.0%, 메모리 54.0%로 자원 포화는 아닙니다. 알림은 \"Lock wait timeout exceeded on ledger_entries (blocked sessions: 37)\"와 \"write requests stuck behind a long-running transaction\" 두 건입니다. 즉 쓰기 지연의 원인은 자원 부족보다 ledger_entries 테이블 락 경합으로 보는 것이 수집된 사실과 맞습니다.\n\n2) 우선 확인 및 조치: 장시간 실행 중인 트랜잭션(blocking session)을 식별해 해당 세션의 쿼리·시작 시각·소유 서비스를 확인하고, 불필요하거나 이상 상태인 세션은 종료를 검토합니다. 종료 전에는 해당 트랜잭션이 금융 기록 등 정합성에 영향을 주지 않는지 확인이 필요합니다.\n\n3) 재발 방지 및 기록: 장시간 트랜잭션이 발생한 원인(애플리케이션의 트랜잭션 범위, 대량 갱신, 외부 호출 대기 등)을 점검하고, 락 타임아웃과 트랜잭션 타임아웃 임계값을 재검토한 뒤 조치 내역을 기록합니다. 참고로 제공된 runbook은 네트워크 타임아웃 대응 절차라 이번 DB 락 경합 장애에는 직접 해당하지 않으며, blocking session의 트랜잭션 ID 또는 대상 서비스 정보가 추가되면 더 정확히 좁힐 수 있습니다."
+    },
+    {
+      "id": "e06",
+      "expected": {
+        "portal-service": "cert-expiry"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "portal-service": false
+      },
+      "latency_s": 7.759,
+      "cost_usd": 0.00061,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 원인 진단: portal-service 다운의 직접 원인은 TLS 인증서 만료로 보입니다. 알림에 \"TLS cert for portal.example.com expired at 00:00 UTC\"가 있고, \"handshake failure rate 100% on port 443\"이 동시에 발생했습니다. CPU 17.3%, 메모리 40.1%로 리소스 부하는 원인이 아닙니다. 수집된 runbook은 DB Down 절차라서 이번 장애와 직접 맞지 않으므로 DB 관련 조치는 해당하지 않습니다.\n\n2) 즉시 조치: 만료된 portal.example.com 인증서를 갱신하거나 새 인증서로 교체하고, 443 포트에 적용해 핸드셰이크가 정상화되는지 확인합니다. 교체 후 monitoring 상태가 down에서 정상으로 바뀌는지 get_monitoring_status로 재확인합니다.\n\n3) 후속 점검 및 재발 방지: 같은 인증서나 TLS 설정을 공유하는 다른 서비스가 있는지 확인해 동일 원인으로 함께 점검합니다. 인증서 만료 전 사전 알림(예: 만료 30일 전)을 설정하고, 갱신 절차를 문서화해 재발을 막습니다."
+    },
+    {
+      "id": "e07",
+      "expected": {
+        "search-service": "dns-failure",
+        "notification-service": "queue-backlog"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "search-service": false,
+        "notification-service": false
+      },
+      "latency_s": 12.371,
+      "cost_usd": 0.001111,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 장애 요약 및 사실 확인\n- search-service: 상태 degraded, CPU 25.7%, 메모리 44.8%. 알림 \"getaddrinfo ENOTFOUND inventory.internal from 12/12 pods\", \"upstream host lookups failing; cached connections still serving\". 12개 파드 전체에서 호스트명 조회가 실패하고 있으며, 기존 캐시된 커넥션으로 일부 요청은 처리 중입니다.\n- notification-service: 상태 degraded, CPU 14.2%, 메모리 43.6%. 알림 \"consumer lag 480k messages on order-events topic\", \"oldest unprocessed message is 23 min old\". order-events 토픽에 48만 건이 쌓여 있고 가장 오래된 미처리 메시지는 23분 경과했습니다.\n\n2) search-service 진단\n- 원인 후보: 내부 DNS 해석 실패(inventory.internal). 자원 부족이 아니라 이름 해석/서비스 디스커버리 또는 네트워크 경로 문제로 보입니다.\n- runbook 기준 DB Down 패턴(Connection refused, SQLSTATE 08006, DB 노드 down, 호스트 CPU·디스크 정상 시 연결 자체 거부)과는 증상이 다릅니다. 알림에 DB 포트 거부나 primary unreachable 메시지가 없으므로 DB 장애로 단정할 근거는 없습니다.\n- 조치: inventory.internal의 DNS 레코드 존재 여부와 리졸버(CoreDNS 등) 상태를 확인하고, 파드 내에서 nslookup/getent로 조회를 재현합니다. 레코드 변경이나 서비스 이전이 있었는지 배포 이력을 확인합니다. 캐시 커넥션이 소진되면 장애가 확대되므로 inventory 서비스 엔드포인트 상태를 함께 점검합니다.\n\n3) notification-service 진단\n- 원인 후보: order-events 컨슈머 처리 지연(컨슈머 정지, 파티션 리밸런싱 반복, 하위 의존성 타임아웃 등). CPU·메모리가 낮아 단순 자원 포화는 아닙니다.\n- 알림에는 DNS 오류가 없으므로, search-service와 같은 DNS 장애라고 단정하지 말고 별도 확인이 필요합니다. 다만 공통 의존성(DNS, 네트워크 경로)이 영향을 주었을 가능성은 배제하지 않습니다.\n- 조치: 컨슈머 그룹의 멤버 수와 리밸런싱 로그, 컨슈머 에러 로그를 확인합니다. 처리 실패 메시지의 재시도/DLQ 적재 여부를 점검하고, 컨슈머를 재기동하기 전 처리 중단 원인을 먼저 파악합니다. 48만 건 적체가 해소되는 속도와 알림 발송 지연 영향 범위를 함께 산정합니다.\n\n4) 공통 조치 및 우선순위\n- 두 서비스 모두 공통 의존성(내부 DNS/네트워크)을 먼저 점검하는 것이 효율적입니다. search-service의 ENOTFOUND 확인이 가장 명확한 단서이므로 최우선으로 진행합니다.\n- DB Down runbook은 현재 수집된 사실에 해당하지 않으므로 적용하지 않습니다. 추가로 DB 포트 헬스체크 실패나 primary unreachable 알림이 확인되면 그때 runbook을 적용합니다.\n- 정상화 후 원인, 영향 시간, 적체 메시지 처리 결과를 문서화하고 DNS 및 컨슈머 지연 알람 임계치를 재검토합니다."
+    },
+    {
+      "id": "e08",
+      "expected": {
+        "shipping-service": "rate-limit"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "shipping-service": false
+      },
+      "latency_s": 6.853,
+      "cost_usd": 0.000538,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 진단 결론: 이번 증상은 runbook의 DB Down 패턴이 아니다. shipping-service 상태는 degraded이고, 알림은 외부 운송사 API의 HTTP 429(일일 쿼터 소진)와 재시도 누적 및 아웃바운드 호출량 3배 증가다. DB 노드 down, 연결 거부(`Connection refused`), `primary node unreachable`, 복제 단절 등 runbook의 DB Down 징후는 수집된 사실에 없다. 따라서 DB Down 절차(failover 전환)는 적용하지 않는다.\n\n2) 현재 상태 근거: CPU 25.8%, 메모리 41.4%로 호스트 자원은 여유가 있다. 지연의 원인은 자원 포화가 아니라 운송사 API 쿼터 소진과 그에 따른 재시도 폭증으로 보인다. 재시도가 호출량을 3배로 키우면서 쿼터 소진을 가속하고 있을 가능성이 높다.\n\n3) 권장 조치: (a) 운송사 API 재시도에 지수 백오프와 상한을 즉시 적용해 호출량 증가를 멈춘다. (b) 쿼터 리셋 시점과 요금제/쿼터 증설 가능 여부를 운송사 측과 확인한다. (c) 배송 조회는 캐시 또는 마지막 성공 응답을 활용해 사용자 영향을 완화한다. (d) 쿼터 사용량과 429 발생 추이를 지속 모니터링하고, 정상화 후 재시도 정책과 쿼터 임계 알람을 재점검한다."
+    },
+    {
+      "id": "e09",
+      "expected": {
+        "invoice-service": "config-error"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "invoice-service": false
+      },
+      "latency_s": 8.894,
+      "cost_usd": 0.000795,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 장애 원인: invoice-service는 v2.31 롤아웃 이후 PAYMENT_API_URL 환경변수가 비어 있어 CrashLoopBackOff에 빠졌고, 4개 레플리카 모두 readiness probe에 실패한 상태입니다(상태: degraded, CPU 7.8%, 메모리 31.9%). 다만 이는 모니터링 알림 2건을 근거로 한 추정이며, 매니페스트/ConfigMap 확인 전까지는 확정이 아닙니다.\n\n2) 즉시 조치: 최근 롤아웃을 v2.30 등 직전 정상 버전으로 롤백해 서비스를 복구하고, 롤백 후 4개 레플리카의 readiness 통과 여부를 확인합니다.\n\n3) 근본 원인 확인: v2.31 배포 매니페스트, ConfigMap, Secret에서 PAYMENT_API_URL 값이 누락 또는 빈 값인지 점검하고, 누락 원인(값 미설정, 시크릿 참조 오류 등)을 찾아 수정 후 재배포합니다.\n\n4) 재발 방지: 배포 전 필수 환경변수 검증(빈 값 차단)을 파이프라인에 추가하고, 결과를 장애 보고서로 정리합니다.\n\n참고: 이 장애는 runbook의 'DB Down 대응 절차'에 해당하지 않습니다. 해당 runbook의 증상(DB 포트 응답 없음, Connection refused 등)은 수집된 사실에 없으므로, DB 절차는 적용하지 않았습니다. 또한 '패턴 분석'은 비교 대상이 없어 수행하지 않았습니다."
+    },
+    {
+      "id": "e10",
+      "expected": {
+        "inventory-service": "thread-pool-exhaustion",
+        "reporting-service": "replication-lag"
+      },
+      "read": [
+        "high-latency"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "high-latency"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "inventory-service": false,
+        "reporting-service": false
+      },
+      "latency_s": 11.476,
+      "cost_usd": 0.001154,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 현황 요약\n- inventory-service: degraded, CPU 27.7%, 메모리 58.3%. 알림은 스레드 풀 'order-exec' 100% busy(큐 200/200)와 CPU가 낮은데 /health가 503을 반환한다는 두 건.\n- reporting-service: degraded, CPU 31.5%, 메모리 61.3%. 알림은 읽기 복제본 db-ro-2가 기본 DB보다 17분 뒤처짐과 14:05 대량 업데이트 이후 대시보드에 오래된 행이 표시된다는 두 건.\n- web-01: healthy, CPU 34.0%, 메모리 48.0%, 알림 0건. 수집된 사실 기준으로 지연 징후는 없다.\n\n2) 증상 분류 및 runbook 대응 매핑\n- inventory-service는 runbook의 \"스레드 풀 고갈\" 절차에 해당한다(스레드 풀 상한 포화, 503 발생). CPU가 낮으므로 CPU 바운드가 아니라 블로킹 또는 외부 의존성 대기가 의심된다. 다만 p95 지연시간과 커넥션 풀 사용률은 수집 데이터에 없어 runbook 1단계의 수치 확인이 아직 되지 않았다.\n- reporting-service는 runbook의 \"읽기 복제본 지연\" 성격이다. 14:05 대량 업데이트 이후 복제 지연이 17분까지 벌어졌고, 오래된 데이터가 노출되고 있다. 이 경우 runbook 4단계(읽기 복제본 트래픽 분산)는 지연 중인 db-ro-2로 읽기를 보내지 않도록 하는 방향으로 적용해야 한다.\n- web-01은 정상으로 판정되어 로드밸런서 제외 등 조치 대상이 아니다.\n\n3) 두 서비스의 연관성 판단\n- 수집 사실만으로는 두 degraded 증상이 같은 원인에서 나왔다고 단정할 수 없다. 두 서비스가 같은 DB 계층을 공유하는지 확인되지 않았다.\n- 확인이 필요한 질문은 다음과 같다. inventory-service의 'order-exec' 스레드가 db-ro-2 또는 기본 DB를 기다리는지, 그리고 14:05 대량 업데이트가 inventory 쪽 블로킹과 시간상 겹치는지다.\n\n4) 권장 조치 순서\n- 가. inventory-service: 스레드 덤프로 'order-exec' 스레드의 대기 지점(DB 커넥션, 외부 API 등)을 확인하고, 해당 호출에 타임아웃을 설정한다. 풀 크기 증설은 원인 확인 후 검토한다.\n- 나. reporting-service: db-ro-2의 복제 지연 원인(대량 업데이트 후 복제 적체 여부)을 확인하고, 지연이 해소될 때까지 읽기 트래픽을 다른 복제본 또는 기본 DB로 우회한다. 대시보드에는 데이터 기준 시점 경고를 표시하는 것을 권장한다.\n- 다. web-01: 현재 조치 불필요. 두 서비스 응답에 web-01이 의존하는지 경로를 확인해 두고 모니터링을 유지한다.\n- 라. 정상화 후 14:05 업데이트의 영향 범위와 근본 원인을 문서화하고 후속 최적화 티켓을 등록한다.\n\n5) 수집되지 않은 항목(추가 확인 필요)\n- 두 서비스의 p95/p99 응답시간 및 SLO 대비 수치\n- DB 커넥션 풀 사용률(runbook 임계치 90% 판단용)\n- 서비스 간 호출 관계 및 공유 DB 여부\n- 14:05 이후 inventory 지연 발생 시점의 타임라인"
+    },
+    {
+      "id": "e11",
+      "expected": {
+        "recommend-service": "memory-leak"
+      },
+      "read": [
+        "db-down"
+      ],
+      "hits": 0,
+      "recall": 0.0,
+      "exact": false,
+      "extra": [
+        "db-down"
+      ],
+      "pairs_ok": null,
+      "system_hits": {
+        "recommend-service": false
+      },
+      "latency_s": 9.812,
+      "cost_usd": 0.000691,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 현황 요약\n- recommend-service 상태는 degraded이며 CPU 47.3%, 메모리 94.6%입니다.\n- 최근 3시간 동안 9회 재시작되었고, 사유는 OOMKilled(exit code 137)입니다.\n- 배포 이후 RSS가 시간당 약 120MB씩 증가하고 있습니다.\n\n2) 원인 판단\n- 수집된 지표(메모리 94.6%, OOMKilled, RSS 지속 증가)는 배포 이후 메모리 누수에 의한 OOM 재시작 패턴과 일치합니다.\n- 첨부된 runbook은 DB Down 대응 절차로, 연결 거부·DB 노드 down·failover 관련 증상을 다룹니다. 이번 수집 사실에는 DB 연결 오류나 DB 노드 down 신호가 없으므로 이 장애의 직접 원인으로 보기 어렵고, 해당 절차를 적용하지 않습니다.\n- 현재 확인된 근거만으로 원인을 단정할 수는 없으며, 메모리 누수 가능성이 가장 높은 것으로 판단합니다.\n\n3) 권장 조치\n- 가장 최근 배포를 롤백하거나 이전 버전으로 되돌려 재시작 루프를 중단하고, 롤백 후 RSS 증가와 재시작 횟수가 멈췄는지 확인합니다.\n- 롤백이 어려우면 힙/메모리 프로파일이나 덤프를 수집해 증가하는 객체를 식별하고, 배포 변경분에서 캐시·컬렉션 누적 등 해제되지 않는 참조를 점검합니다.\n- 추가로 필요한 정보: 배포 diff, 재시작 직전 로그, 메모리 프로파일 결과. 이 정보가 확보되면 원인을 보다 정확히 특정할 수 있습니다."
+    },
+    {
+      "id": "e12",
+      "expected": {
+        "ledger-service": "db-lock",
+        "recommend-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "read": [
+        "network-timeout"
+      ],
+      "hits": 1,
+      "recall": 0.333,
+      "exact": false,
+      "extra": [],
+      "pairs_ok": null,
+      "system_hits": {
+        "ledger-service": false,
+        "recommend-service": false,
+        "gateway-service": true
+      },
+      "latency_s": 11.689,
+      "cost_usd": 0.001206,
+      "retry_count": 0,
+      "validation_attempts": 1,
+      "replan_rounds": 1,
+      "selections": [],
+      "reply": "1) 증상 요약 (수집 사실 기준)\n- ledger-service: degraded, CPU 21.2%, 메모리 51.6%. 알림: \"Lock wait timeout exceeded on ledger_entries (blocked sessions: 37)\", \"write requests stuck behind a long-running transaction\". 장기 실행 트랜잭션이 ledger_entries 락을 잡고 있어 쓰기 요청이 대기 중이다.\n- recommend-service: degraded, CPU 49.7%, 메모리 95.8%. 알림: \"pod restarted 9 times in 3h: reason OOMKilled, exit code 137\", \"RSS growing ~120MB/h since last deploy\". 최근 배포 이후 메모리 누수로 인한 반복 OOMKill이다.\n- gateway-service: degraded, CPU 28.2%, 메모리 44.1%. 알림: \"upstream timeout to payments-service (504)\", \"network packet loss 3%\". 다운스트림 payments-service 호출이 504로 실패하고 있으며 패킷 손실 3%가 관측된다.\n\n2) 원인 분석 및 런북 대조\n- 세 건은 수집된 알림상 서로 직접 연결된 증거가 없으며, 계층이 다른 독립 문제로 보인다 (DB 락 / 앱 메모리 누수 / 네트워크·업스트림 지연).\n- gateway의 \"payments-service 504 + 패킷 손실 3%\"는 런북의 네트워크 타임아웃 증상(504, 패킷 손실)과 부분적으로 일치한다. 다만 런북 조치 절차(DNS·방화벽·LB 헬스체크·AZ 우회)를 적용하기 위한 변경 이력, AZ 구분, 헬스체크 실패 여부는 수집되지 않았다. 따라서 네트워크 원인으로 확정할 수 없다.\n- payments-service 자체의 상태(지연, 에러율, 부하)가 수집되지 않아 504가 payments 측 지연에서 비롯되었을 가능성을 배제할 수 없다.\n- ledger의 락 대기와 recommend의 OOMKill은 런북 대상(네트워크 타임아웃)에 해당하지 않는다. 런북은 \"DB는 살아 있고 쿼리가 서버 내에서 빨리 끝나는\" 경우와 구분하도록 명시하고 있으며, ledger는 장기 트랜잭션 락으로 해당 구분에 맞지 않는다.\n\n3) 권장 조치 (우선순위순, 추가 확인 필요 항목 포함)\n- ledger-service: 장기 실행 트랜잭션(블로킹 세션 선두)을 식별해 원인 쿼리/애플리케이션 트랜잭션을 확인하고, 필요 시 해당 세션 종료를 검토한다. 37개 블로킹 세션의 대기 해소 후 쓰기 요청 정상화를 확인한다.\n- recommend-service: 최근 배포 이후 메모리 누수가 명확하므로 직전 버전으로 롤백을 우선 검토한다. 롤백 전 힙/RSS 증가 원인(캐시, 누적 객체 등) 확보를 위해 프로파일링 자료를 남긴다.\n- gateway-service / payments-service: payments-service의 지연·에러율·부하를 먼저 조회한다. 아울러 런북 1~2단계(최근 DNS·방화벽·보안그룹·LB 헬스체크 변경 점검)를 수행하고, AZ 편중 여부가 확인되면 3단계 우회 라우팅을 검토한다. 504가 payments 지연에서 온 것으로 확인되면 타임아웃 임계값 상향(런북 4단계)은 신중히 적용한다.\n- 공통: 세 건이 동시에 발생한 것이 우연인지(공통 인프라 변경 여부, 배포 시점 일치) 확인하고, 정상화 후 원인별 기록과 재발 방지책(메모리 누수 테스트, 락 타임아웃·트랜잭션 길이 정책, 헬스체크·재시도 정책 재검토)을 정리한다."
+    }
+  ]
+}

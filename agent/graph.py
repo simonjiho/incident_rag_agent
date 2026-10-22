@@ -6,7 +6,7 @@ incident: plan(MCP Prompt 절차 반영) → gate(권위 게이트)
           → runbook_agent(서브그래프: 시스템별 runbook 선택 → 조회)
           → replan_check(runbook 빠진 시스템이 있으면 키워드 규칙으로 1회 재조사)
           → analysis(needs_analysis=True일 때만 실제 실행) → write → validate(반려 시 재작성)
-          → finalize
+          → approval(위험 조치가 있으면 사람 승인 — 거부 시 1회 재작성) → finalize
 
 이 파일에는 노드를 잇는 분기 함수와 build_graph만 남겼다. 나머지는 역할별로 나눠 두었다.
   - agent/state.py           : AgentState, add_cost
@@ -25,7 +25,7 @@ from langgraph.graph import END, StateGraph
 from .agents import build_monitoring_agent, build_runbook_agent
 from .deps import SupervisorDeps
 from .nodes import (
-    analysis_node, chat_answer_node, finalize_node, gate_node, plan_node,
+    analysis_node, approval_node, chat_answer_node, finalize_node, gate_node, plan_node,
     replan_check_node, route_node, validate_node, write_node,
 )
 from .state import AgentState
@@ -41,10 +41,17 @@ def _after_replan_check(state: AgentState) -> str:
 
 
 def _after_validate(state: AgentState) -> str:
-    return "finalize" if state.get("validation_feedback") is None else "write"
+    return "approval" if state.get("validation_feedback") is None else "write"
 
 
-def build_graph(deps: SupervisorDeps):
+def _after_approval(state: AgentState) -> str:
+    """승인 거부(첫 번째)면 그 조치를 빼고 다시 쓰고, 그 외엔 마무리."""
+    last = state["events"][-1] if state.get("events") else {}
+    return "write" if last.get("type") == "ApprovalDecision" and last.get("rewrite") else "finalize"
+
+
+def build_graph(deps: SupervisorDeps, checkpointer=None):
+    """checkpointer는 사람 승인(interrupt) 후 이어서 실행하려면 필요하다 — 서버가 넣어 준다."""
     g = StateGraph(AgentState)
     node = lambda fn: partial(fn, deps=deps)   # Wave 13 — 명시적 의존성 주입
     g.add_node("route", node(route_node))
@@ -57,6 +64,7 @@ def build_graph(deps: SupervisorDeps):
     g.add_node("analysis", node(analysis_node))
     g.add_node("write", node(write_node))
     g.add_node("validate", node(validate_node))
+    g.add_node("approval", node(approval_node))
     g.add_node("finalize", node(finalize_node))
 
     g.set_entry_point("route")
@@ -72,6 +80,8 @@ def build_graph(deps: SupervisorDeps):
     g.add_edge("analysis", "write")
     g.add_edge("write", "validate")
     g.add_conditional_edges("validate", _after_validate,
+                            {"approval": "approval", "write": "write"})
+    g.add_conditional_edges("approval", _after_approval,
                             {"finalize": "finalize", "write": "write"})
     g.add_edge("finalize", END)
-    return g.compile()
+    return g.compile(checkpointer=checkpointer)

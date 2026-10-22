@@ -19,6 +19,8 @@ class AgentState(TypedDict, total=False):
     draft: str
     validation_attempts: int
     validation_feedback: str
+    hitl: bool                       # 요청이 사람 승인(HITL)을 켰는가 — 웹 화면은 켜고 API는 기본 끔
+    approval_rounds: int             # 승인 거부 후 다시 쓴 횟수 (최대 1)
     final: str
     last_prompt: str
     cost_usd: float
