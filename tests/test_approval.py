@@ -62,6 +62,24 @@ def test_find_risky_actions():
     assert len(find_risky_actions("\n".join(f"{i}) 서비스 재시작" for i in range(9)))) == 5
 
 
+def test_observation_sentences_are_not_actions():
+    """모니터링 알림 인용(restarted, OOMKilled)은 조치가 아니다 — 단어 단위로만 잡는다."""
+    assert find_risky_actions("알림: pod restarted 9 times in 3h: reason OOMKilled, exit code 137") == []
+
+
+def test_more_risky_actions_are_caught():
+    text = ("1) kubectl delete pod auth-7f9 로 파드를 지운다.\n"
+            "2) 노드를 재부팅한다.\n3) DROP DATABASE tmp_ledger 를 실행한다.\n"
+            "4) 블로커는 `KILL` 또는 `pg_terminate_backend`로 종료한다.")
+    assert len(find_risky_actions(text)) == 4
+
+
+def test_long_sentence_snippet_keeps_the_risky_word():
+    long = "진단 결과: " + "가" * 190 + " 즉시 재시작해 서비스 중단을 막는다."
+    found = find_risky_actions(long)
+    assert len(found) == 1 and "재시작" in found[0] and found[0].startswith("…")
+
+
 async def test_hitl_off_runs_straight_through(deps):
     graph = graph_with(deps, StubWriter())
     result = await graph.ainvoke(initial_state(hitl=False), config("off"))

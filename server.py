@@ -180,6 +180,16 @@ async def _finish(run_id: str, thread_id: str, message: str, final: str) -> None
     await app.state.checkpointer.adelete_thread(run_id)
 
 
+async def _cancel_pending(thread_id: str) -> None:
+    """같은 대화에 승인 대기 중인 실행이 있으면 버린다 — 새 질문이 오면 결정하지 않은 이전
+    요청은 취소한 것으로 본다(최종 답변이 없으니 대화 이력에도 남기지 않는다). 이렇게 해야
+    승인을 나중에 눌러 이전 요청이 새 질문 뒤에 기록되는 순서 꼬임이 생기지 않는다."""
+    for run_id, pending in list(app.state.pending.items()):
+        if pending["thread_id"] == thread_id:
+            app.state.pending.pop(run_id, None)
+            await app.state.checkpointer.adelete_thread(run_id)
+
+
 def _approval_response(result: dict, approval: dict, run_id: str, rid: str | None) -> dict:
     return {"status": "approval_required", "run_id": run_id, "approval": approval,
             "reply": None, "events": result.get("events", []),
@@ -193,9 +203,13 @@ async def _handle_chat(message: str, thread_id: str, hitl: bool = False,
     deps = app.state.deps
     history = deps.session_store.load(thread_id)   # Wave 12
     if deps.version == "v2":
-        result = await app.state.graph.ainvoke(
-            {"query": message, "thread_id": thread_id, "history": history,
-             "events": [], "cost_usd": 0.0, "hitl": hitl}, config)
+        try:
+            result = await app.state.graph.ainvoke(
+                {"query": message, "thread_id": thread_id, "history": history,
+                 "events": [], "cost_usd": 0.0, "hitl": hitl}, config)
+        except Exception:
+            await app.state.checkpointer.adelete_thread(run_id)
+            raise
     else:
         result = await run_v1(deps, message, thread_id, history)   # Wave 14
     if _interrupt_value(result) is None:
@@ -227,6 +241,7 @@ def _take_pending(run_id: str) -> dict:
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
+    await _cancel_pending(req.thread_id)
     run_id, config = _new_run(req.thread_id)
     result, rid = await _handle_chat(req.message, req.thread_id, req.hitl, run_id, config)
     approval = _interrupt_value(result)
@@ -241,8 +256,12 @@ async def chat(req: ChatRequest):
 @app.post("/chat/approve")
 async def chat_approve(req: ApproveRequest):
     """승인 대기 중인 실행(run_id)에 사람의 답을 넣어 이어서 실행한다 (JSON 응답)."""
-    pending = _take_pending(req.run_id)
-    result, rid = await _handle_approve(req, pending)
+    pending = _take_pending(req.run_id)   # 먼저 꺼내 같은 실행의 동시 재개를 막는다
+    try:
+        result, rid = await _handle_approve(req, pending)
+    except Exception:
+        app.state.pending.setdefault(req.run_id, pending)   # 마지막 체크포인트에서 다시 시도 가능
+        raise
     approval = _interrupt_value(result)
     if approval is not None:   # 거부 → 다시 쓴 안에도 위험 조치가 남아 한 번 더 묻는다
         app.state.pending[req.run_id] = {**pending, "seen": len(result.get("events", []))}
@@ -252,7 +271,7 @@ async def chat_approve(req: ApproveRequest):
 
 
 async def _stream_graph(graph_input, config: dict, run_id: str, thread_id: str,
-                        message: str, seen: int = 0):
+                        message: str, seen: int = 0, restore: dict | None = None):
     """그래프 실행을 SSE 이벤트로 흘려보낸다 — 새 요청과 승인 후 재개가 같이 쓴다.
 
     stream_mode를 리스트로 주면 (mode, payload) 튜플이 나온다 — "updates"는 노드가 끝날
@@ -261,32 +280,49 @@ async def _stream_graph(graph_input, config: dict, run_id: str, thread_id: str,
     (monitoring_agent/runbook_agent) 안쪽 노드가 끝날 때마다도 델타가 오고, 튜플 앞에
     namespace(어느 서브그래프인지)가 붙는다. approval 노드가 interrupt()로 멈추면
     updates에 '__interrupt__' 키가 온다 — 이때는 FinalAnswer 대신 ApprovalRequired를 보낸다.
+    실행 중 오류가 나면 Error 이벤트와 [DONE]으로 끝낸다. 재개(restore 있음)였다면 승인
+    대기 항목을 되돌려 같은 run_id로 다시 시도할 수 있게 한다.
     """
     final = ""
     last_prompt = None   # finalize까지 살아남은 최종 write/chat 호출의 실제 프롬프트
     approval = None
-    async for namespace, mode, payload in app.state.graph.astream(
-            graph_input, config, stream_mode=["updates", "custom"], subgraphs=True):
-        if mode == "custom":
-            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-            continue
-        agent_name = namespace[0].split(":")[0] if namespace else None
-        for node_name, delta in payload.items():
-            if node_name == "__interrupt__":
-                approval = delta[0].value if delta else None
+    try:
+        async for namespace, mode, payload in app.state.graph.astream(
+                graph_input, config, stream_mode=["updates", "custom"], subgraphs=True):
+            if mode == "custom":
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                 continue
-            delta = delta or {}
-            for ev in (delta.get("events") or [])[seen:]:
-                ev = {**ev, "node": node_name}
-                if agent_name:
-                    ev["agent"] = agent_name
-                yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
-            if delta.get("events"):
-                seen = len(delta["events"])
-            if delta.get("final"):
-                final = delta["final"]
-            if delta.get("last_prompt"):
-                last_prompt = delta["last_prompt"]
+            agent_name = namespace[0].split(":")[0] if namespace else None
+            for node_name, delta in payload.items():
+                if node_name == "__interrupt__":
+                    approval = delta[0].value if delta else None
+                    continue
+                delta = delta or {}
+                for ev in (delta.get("events") or [])[seen:]:
+                    ev = {**ev, "node": node_name}
+                    if agent_name:
+                        ev["agent"] = agent_name
+                    yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                if delta.get("events"):
+                    seen = len(delta["events"])
+                if delta.get("final"):
+                    final = delta["final"]
+                if delta.get("last_prompt"):
+                    last_prompt = delta["last_prompt"]
+    except Exception as e:
+        if restore is not None:
+            app.state.pending.setdefault(run_id, restore)
+        else:
+            await app.state.checkpointer.adelete_thread(run_id)
+        err = {"type": "Error", "detail": f"{type(e).__name__}: {e}"[:300],
+               "retry_run_id": run_id if restore is not None else None}
+        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+        return
+    if approval is None and last_prompt is None:
+        # 승인 후 재개한 구간에는 write가 없어 델타에 프롬프트가 없다 — 저장된 상태에서 꺼낸다
+        snapshot = await app.state.graph.aget_state(config)
+        last_prompt = snapshot.values.get("last_prompt")
     if approval is not None:
         app.state.pending[run_id] = {"thread_id": thread_id, "message": message,
                                      "config": config, "seen": seen}
@@ -320,6 +356,7 @@ async def chat_stream(message: str, thread_id: str = "default", hitl: bool = Fal
 
     if deps.version != "v2":
         return StreamingResponse(gen_v1(), media_type="text/event-stream")
+    await _cancel_pending(thread_id)
     run_id, config = _new_run(thread_id)
     graph_input = {"query": message, "thread_id": thread_id,
                    "history": deps.session_store.load(thread_id),
@@ -335,7 +372,7 @@ async def chat_resume(run_id: str, approved: bool, comment: str = ""):
     return StreamingResponse(
         _stream_graph(Command(resume={"approved": approved, "comment": comment}),
                       pending["config"], run_id, pending["thread_id"], pending["message"],
-                      seen=pending["seen"]),
+                      seen=pending["seen"], restore=pending),
         media_type="text/event-stream")
 
 

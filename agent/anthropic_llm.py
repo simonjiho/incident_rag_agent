@@ -18,6 +18,7 @@ OpenAI 백엔드와 다른 점
 import json
 import os
 import re
+import warnings
 
 import anthropic
 from langsmith import traceable
@@ -25,8 +26,15 @@ from langsmith import traceable
 from .openai_llm import KNOWN_SYSTEMS, _guess_target, _guess_targets
 
 DEFAULT_MODEL = "claude-haiku-5-5"
-# Haiku 5.5 실제 단가 (프롬프트 100K 토큰 이하 구간), USD per 1M tokens
-PRICE_PER_MTOK = {"claude-haiku-5-5": (0.10, 0.50)}
+# 실제 단가 (입력, 출력) USD per 1M tokens. Haiku 5.5는 프롬프트 100K 토큰 이하 구간
+PRICE_PER_MTOK = {
+    "claude-haiku-5-5": (0.10, 0.50),
+    "claude-sonnet-5-5": (2.0, 10.0),
+    "claude-opus-5-5": (4.0, 20.0),
+}
+THINKING_HEADROOM = 4096   # thinking을 켜면 생각 토큰도 max_tokens에 들어간다
+TRUNCATED_NOTE = "\n\n(응답이 길이 제한으로 잘렸습니다)"
+REFUSED_TEXT = "(모델이 이 요청에 대한 응답을 거부했습니다)"
 
 ROUTE_SCHEMA = {
     "type": "object",
@@ -70,7 +78,11 @@ class AnthropicLLM:
                  thinking: bool | None = None):
         self.name = f"anthropic:{model}"
         self.model = model
-        self.price_in, self.price_out = PRICE_PER_MTOK.get(model, (0.10, 0.50))
+        self.price_known = model in PRICE_PER_MTOK
+        if not self.price_known:
+            warnings.warn(f"{model} 단가가 PRICE_PER_MTOK에 없어 Haiku 단가로 계산합니다 — "
+                          "cost_usd가 실제보다 낮게 나올 수 있습니다", stacklevel=2)
+        self.price_in, self.price_out = PRICE_PER_MTOK.get(model, PRICE_PER_MTOK[DEFAULT_MODEL])
         self.effort = effort or os.environ.get("ANTHROPIC_EFFORT", "low")
         if thinking is None:
             thinking = os.environ.get("ANTHROPIC_THINKING", "off") == "on"
@@ -112,9 +124,13 @@ class AnthropicLLM:
             "output_config": output_config,
         }
         # Haiku 5.5는 기본이 adaptive thinking — 짧은 분류·요약에는 지연만 늘어서 끈다.
-        # (disabled는 effort high 이하에서만 허용된다)
-        if not self.thinking:
+        # disabled는 Haiku의 effort high 이하에서만 받는다(Sonnet·Opus 5.5는 400) — 그 밖의
+        # 조합은 thinking을 보내지 않고(adaptive) 생각 토큰 몫을 max_tokens에 더한다.
+        if (not self.thinking and self.model.startswith("claude-haiku")
+                and self.effort in ("low", "medium", "high")):
             params["thinking"] = {"type": "disabled"}
+        else:
+            params["max_tokens"] = max_tokens + THINKING_HEADROOM
         return params
 
     def _usage(self, message) -> dict:
@@ -123,7 +139,7 @@ class AnthropicLLM:
         usd = ((u.input_tokens or 0) * self.price_in
                + (u.output_tokens or 0) * self.price_out) / 1_000_000
         return {"model": self.name, "tokens": tokens, "usd": round(usd, 6),
-                "stop_reason": message.stop_reason}
+                "stop_reason": message.stop_reason, "price_known": self.price_known}
 
     def _chat(self, system: str, user: str, schema: dict | None = None,
               max_tokens: int = 1024) -> tuple[str, dict]:
@@ -141,6 +157,15 @@ class AnthropicLLM:
                 if on_token is not None:
                     on_token(text)
             message = await stream.get_final_message()
+        # 잘렸으면 잘렸다고 붙이고, 거부로 빈 응답이면 고정 문구로 — 조용히 그대로 내보내지 않는다
+        if message.stop_reason == "max_tokens":
+            chunks.append(TRUNCATED_NOTE)
+            if on_token is not None:
+                on_token(TRUNCATED_NOTE)
+        elif message.stop_reason == "refusal" and not "".join(chunks).strip():
+            chunks.append(REFUSED_TEXT)
+            if on_token is not None:
+                on_token(REFUSED_TEXT)
         usage = self._usage(message)
         usage["prompt"] = f"[SYSTEM]\n{system}\n\n[USER]\n{user}"
         return "".join(chunks), usage
@@ -229,7 +254,7 @@ class AnthropicQualityLLM(AnthropicLLM):
         user = f"## 사용자 요청\n{query}\n\n## 수집된 사실\n" + "\n".join(facts)
         if feedback:
             user += f"\n\n## 이전 초안에 대한 검증 반려 사유 (반드시 반영)\n{feedback}"
-        return await self._chat_stream(system, user, on_token=on_token, max_tokens=2048)
+        return await self._chat_stream(system, user, on_token=on_token, max_tokens=4096)
 
 
 def _normalize_plan(raw: dict, query: str) -> dict:

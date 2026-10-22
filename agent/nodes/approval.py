@@ -17,25 +17,32 @@ from langsmith import traceable
 from ..deps import SupervisorDeps
 from ..state import AgentState
 
-# (찾을 말, 사람에게 보여 줄 이름) — 서비스를 멈추거나 데이터를 바꾸는 조치
-RISKY_ACTIONS = [
-    ("재시작", "재시작"), ("재기동", "재기동"), ("restart", "restart"),
-    ("롤백", "롤백"), ("rollback", "rollback"),
-    ("삭제", "삭제"), ("kill", "kill"), ("pg_terminate_backend", "세션 강제 종료"),
-    ("페일오버", "페일오버"), ("failover", "failover"), ("drop table", "DROP TABLE"),
-]
+# 서비스를 멈추거나 데이터를 바꾸는 조치. 영어 동사는 단어 단위로만 잡는다 —
+# 'pod restarted 9 times', 'OOMKilled' 같은 모니터링 관찰 문장이 조치로 잡히지 않게.
+RISKY_PATTERN = re.compile(
+    r"재시작|재기동|재부팅|롤백|삭제|강제\s*종료|페일오버|"
+    r"\b(?:restart|reboot|roll\s?back|kill|delete|failover|truncate)\b|"
+    r"pg_terminate_backend|drop\s+(?:table|database)|kubectl\s+(?:delete|drain|scale)",
+    re.IGNORECASE)
 _SPLIT = re.compile(r"\n+|(?<=[.!?])\s+(?=\S)")
 MAX_ACTIONS = 5
+SNIPPET = 160      # 승인 카드·거부 피드백에 보여 줄 길이
+LEAD = 60          # 위험 단어 앞에 남길 문맥
 
 
 def find_risky_actions(text: str) -> list[str]:
-    """최종안에서 위험 조치가 들어 있는 문장을 찾는다 (최대 5개, 원문 그대로)."""
+    """최종안에서 위험 조치가 들어 있는 문장을 찾는다 (최대 5개).
+    긴 문장은 위험 단어가 꼭 보이도록 그 단어 앞뒤로 잘라 보여 준다."""
     found = []
     for sentence in _SPLIT.split(text or ""):
         line = sentence.strip(" -*")
-        lower = line.lower()
-        if line and any(word in lower for word, _ in RISKY_ACTIONS) and line not in found:
-            found.append(line[:160])
+        m = RISKY_PATTERN.search(line)
+        if not line or not m:
+            continue
+        start = 0 if len(line) <= SNIPPET else max(0, m.start() - LEAD)
+        snippet = ("…" if start else "") + line[start:start + SNIPPET]
+        if snippet not in found:
+            found.append(snippet)
         if len(found) >= MAX_ACTIONS:
             break
     return found

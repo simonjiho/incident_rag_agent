@@ -251,7 +251,9 @@ if target in seen: continue                                            # 이미 
 
 **서버** (`server.py`): `InMemorySaver` 체크포인터 하나, 요청마다 새 체크포인트 이름(`run_id`). 멈추면 `/chat`은 `status=approval_required` + `run_id`, `/chat/stream`은 `ApprovalRequired` 이벤트를 보낸다. 이어 가기는 `POST /chat/approve`(JSON) 또는 `GET /chat/resume`(SSE, 화면이 쓰는 것). 대화 이력(SQLite)에는 최종 답변이 나온 뒤에만 남긴다.
 
-**테스트**: `tests/test_approval.py` 8개 — 위험 문장 찾기, hitl 끔이면 안 멈춤, 안전한 답변은 건너뜀, 승인·거부·두 번 거부, 요청끼리 상태가 섞이지 않음.
+**테스트**: `tests/test_approval.py` 11개 — 위험 문장 찾기(알림 인용 `restarted`·`OOMKilled`는 제외, `kubectl delete`·재부팅은 포함), hitl 끔이면 안 멈춤, 안전한 답변은 건너뜀, 승인·거부·두 번 거부, 요청끼리 상태가 섞이지 않음.
+
+**실패했을 때**: 재개 중 LLM 오류가 나면 대기 항목을 되돌려 같은 승인 카드로 다시 시도할 수 있다. 승인 대기 중에 같은 대화로 새 질문이 오면 이전 대기는 취소한다(나중에 승인해서 이력 순서가 꼬이지 않게). 화면은 결정 전까지 입력창을 잠근다.
 
 ## 8-3. Claude 백엔드 (`agent/anthropic_llm.py`)
 
@@ -278,7 +280,7 @@ if target in seen: continue                                            # 이미 
 
 ## 10. 테스트와 평가는 무엇을 하나
 
-- **`tests/`** (pytest 97개, Ollama 없이 19초): 가짜 MCP · 가짜 LLM을 deps에 주입해서 노드, 선택기 판단 순서, RAG(가짜 임베딩), 그래프 전체 흐름, 계획 보정, 사람 승인을 검사한다.
+- **`tests/`** (pytest 110개, Ollama 없이 19초): 가짜 MCP · 가짜 LLM을 deps에 주입해서 노드, 선택기 판단 순서, RAG(가짜 임베딩), 그래프 전체 흐름, 계획 보정, 사람 승인을 검사한다.
 - **`eval/run_eval.py selector`**: 평가셋 40건으로 선택기만 비교 (키워드 30% · BM25 62.5% · hybrid 82.5% · vector 90%).
 - **`eval/run_eval.py e2e`**: 서버에 실제로 12건을 보내 정답 runbook을 읽었는지 센다 (5/17 → 16/17 — fake, qwen3:0.6b, Claude Haiku 모두 같음).
 - **`eval/tools/check_data.py`**: 평가 데이터가 runbook 문장을 베끼지 않았는지, 범주가 맞는지 검사한다.

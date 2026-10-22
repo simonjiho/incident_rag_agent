@@ -47,7 +47,7 @@ runbook 선택기 단독(selector_cases 40건) top-1 — `eval/results/selector_
 | 5 | 계획(plan)에 runbook 조회가 없어서 **모든** 장애 요청이 replan_check에서 "runbook 없음 → 추가 조사" 라운드를 탔다. 재계획이 예외 처리가 아니라 정상 경로였다. | **Dynamic Planning 재정의**: runbook 선택이 계획된 단계가 됐고, replan_check는 "장애 시스템마다 runbook이 붙었는가"를 검사한다. 빠진 시스템이 있을 때만 1회 다시 조사한다 — 선택기가 실패한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다. |
 | 6 | `agent/graph.py` 한 파일에 노드 10개·규칙·상태가 다 있었다. | **모듈화**: `state.py`, `rules.py`, `runbook_selector.py`, `agents/`, `nodes/`(파일 하나에 노드 하나). |
 | 7 | 선택 방식을 바꾸려면 노드 코드를 고쳐야 했다. | **DI**: `SupervisorDeps.runbook_selector`. 서버가 `RUNBOOK_SELECTOR`로 만들어 주입하고, 노드는 `selector.select()`만 부른다. |
-| 8 | 테스트가 없었다. | **pytest 97개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
+| 8 | 테스트가 없었다. | **pytest 110개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
 | 9 | Before/After를 잴 방법이 없었다. | **`eval/run_eval.py`**: selector / threshold / e2e / compare 서브커맨드. 개선 전 서버에도 그대로 돌아간다. |
 | 10 | (실모델에서 발견) 소형 모델(qwen3:0.6b)이 계획에서 시스템명을 틀리게 쓰면, 보정 코드가 그 이름을 '쿼리에서 처음 나온 시스템'으로 바꾸고 중복으로 버려 **그 시스템 조사가 통째로 빠졌다** (e10 reporting-service, e12 recommend-service·gateway-service). | **계획 보정**: 쿼리에 이름이 그대로 나온 시스템은 모델이 빠뜨려도 항상 조사한다(`ollama_llm.py`·`openai_llm.py`의 `plan()`). 모델 판단을 코드로 바로잡는 권위 게이트와 같은 원칙. 재현 테스트 `tests/test_plan_guard.py`. |
 | 11 | 최종안에 서비스 재시작·롤백·세션 강제 종료 같은 조치가 있어도 그대로 내보냈다. | **사람 승인(HITL)**: validate를 통과한 최종안에서 위험 조치 문장을 코드로 찾고(`agent/nodes/approval.py`), 있으면 LangGraph `interrupt()`로 멈춘다. 승인하면 그대로, 거부하면 그 조치를 빼라는 피드백으로 한 번 다시 쓴다(다시 쓴 안도 거부하면 "보류" 표시를 붙여 내보낸다). 요청에 `hitl=true`일 때만 동작한다 — 웹 화면은 켜고, API·평가는 기본으로 끈다. |
@@ -102,7 +102,7 @@ flowchart LR
     F -->|아니오| R["RAG top-1 채택"]
 ```
 
-사람 승인은 체크포인터가 있어야 멈춘 상태를 들고 있을 수 있다. 서버는 `InMemorySaver`를 하나 두고, 요청마다 체크포인트 thread를 새로 만든다(`run_id = thread_id:랜덤 8자`). 같은 대화의 이전 요청 상태가 다음 요청에 섞이지 않게 하려는 것이고, 대화 이력은 원래대로 SQLite가 들고 있다(최종 답변이 나온 뒤에만 기록). 멈추면 `/chat`은 `status=approval_required`와 `run_id`를, `/chat/stream`은 `ApprovalRequired` 이벤트를 보낸다. `POST /chat/approve`(JSON) 또는 `GET /chat/resume`(SSE)이 `Command(resume={"approved", "comment"})`로 이어서 실행한다.
+사람 승인은 체크포인터가 있어야 멈춘 상태를 들고 있을 수 있다. 서버는 `InMemorySaver`를 하나 두고, 요청마다 체크포인트 thread를 새로 만든다(`run_id = thread_id:랜덤 8자`). 같은 대화의 이전 요청 상태가 다음 요청에 섞이지 않게 하려는 것이고, 대화 이력은 원래대로 SQLite가 들고 있다(최종 답변이 나온 뒤에만 기록). 멈추면 `/chat`은 `status=approval_required`와 `run_id`를, `/chat/stream`은 `ApprovalRequired` 이벤트를 보낸다. `POST /chat/approve`(JSON) 또는 `GET /chat/resume`(SSE)이 `Command(resume={"approved", "comment"})`로 이어서 실행한다. 재개 중 LLM 오류가 나면 대기 항목을 되돌려 같은 `run_id`로 다시 시도할 수 있고(스트림은 `Error` 이벤트로 알린다), 승인 대기 중에 같은 대화로 새 질문이 오면 이전 대기는 취소한다 — 나중에 승인해서 대화 이력 순서가 꼬이는 일을 막으려는 것이다. 화면은 결정 전까지 입력창을 잠근다.
 
 실행 화면(Claude Haiku 5.5, ledger-service): 승인 요청 `doc/captures/hitl_approval_request.png` → 사유를 적어 거부한 뒤 세션 강제 종료를 뺀 재작성 `doc/captures/hitl_after_reject.png`.
 
@@ -134,7 +134,7 @@ flowchart LR
 | `web_demo_server.py` | 수정 | `/chat/resume`·`/chat/approve` 중계, 쿼리 파라미터 그대로 전달 |
 | `data/runbooks/*.md`, `data/monitoring.json` | 수정·신규 | runbook 14종, 시스템 15개 |
 | `eval/*` | 신규 | 평가셋, `check_data.py`, `run_eval.py`, `results/` |
-| `tests/*`, `pytest.ini` | 신규 | pytest 97개 (`test_plan_guard.py`: 계획 보정 재현 7개, `test_approval.py`: 사람 승인 8개 포함) |
+| `tests/*`, `pytest.ini` | 신규 | pytest 110개 (`test_plan_guard.py`: 계획 보정 재현 7개, `test_approval.py`: 사람 승인 11개, `test_anthropic_llm.py`: Claude 백엔드 10개 포함) |
 | `eval/base_patch/` | 신규 | 개선 전 코드를 Claude로 돌리는 평가 전용 어댑터와 적용법 |
 
 ## 4. 설계 이유와 트레이드오프
@@ -345,5 +345,5 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 - **MCPClient lock.** 원본 MCPClient는 호출 하나가 끝날 때까지 lock을 잡는다. 시스템별 search_runbook을 `asyncio.gather`로 동시에 불러도 실제로는 한 줄로 서고, 검색이 느려지면 같은 서버의 다른 요청도 기다린다. 질의 타임아웃(5s)과 서킷 브레이커로 최악을 5s 정도로 묶었을 뿐 구조는 그대로다.
 - **BM25 토크나이저가 단순하다.** 형태소 분석 없이 한글 어절 + 글자 bigram이다. 조사 붙은 단어는 bigram으로 어느 정도 잡지만 동의어·약어는 못 잡는다.
 - **벡터 DB 없이 numpy 내적.** runbook 14종·청크 124개라 전수 비교로 충분하다. 문서가 수천 개로 늘면 ANN 인덱스(벡터 DB)가 필요하다. MCP 서버가 뜰 때 인덱스를 한 번 만들므로 runbook을 고치면 서버를 재시작해야 한다.
-- **위험 조치 탐지는 단어 목록이다.** "재시작은 임시 조치일 뿐" 같은 설명 문장도 걸리고, 목록에 없는 표현("파드를 내린다")은 놓친다. 오탐은 사람이 승인 한 번으로 넘기면 되지만 미탐은 그대로 나간다. 승인 대기 상태는 메모리(`InMemorySaver`)에 있어 서버를 재시작하면 사라지고, 대기 시간 제한도 없다.
+- **위험 조치 탐지는 단어 목록이다.** 영어 동사는 단어 단위로만 잡아 `pod restarted`·`OOMKilled` 같은 알림 인용은 거르지만, "재시작은 임시 조치일 뿐" 같은 한국어 설명 문장은 걸리고, 목록에 없는 표현("파드를 내린다")은 놓친다. 오탐은 사람이 승인 한 번으로 넘기면 되지만 미탐은 그대로 나간다. 승인 대기 상태는 메모리(`InMemorySaver`)에 있어 서버를 재시작하면 사라지고, 대기 시간 제한도 없다(같은 대화로 새 질문을 보내면 취소된다).
 - **fake LLM 결과는 선택 품질만 보여 준다.** 답변 문장 품질은 실모델(Ollama/OpenAI) e2e로 따로 봐야 한다. 지연은 모두 1회 실행 값이다.

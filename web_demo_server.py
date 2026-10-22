@@ -12,6 +12,7 @@ server.py는 평소처럼(fake/ollama/openai 아무 백엔드로나) 8100에 미
 실행:
     python3 web_demo_server.py        # http://localhost:8600 에서 채팅 화면 오픈
 """
+import json
 import os
 from pathlib import Path
 
@@ -52,6 +53,12 @@ def _relay(path: str, params: dict) -> StreamingResponse:
     async def relay():
         async with httpx.AsyncClient(timeout=None) as client:
             async with client.stream("GET", f"{BACKEND}{path}", params=params) as upstream:
+                if upstream.status_code >= 400:   # 404(승인 대기 없음) 등은 SSE Error 이벤트로 바꿔 전달
+                    body = (await upstream.aread()).decode(errors="replace")
+                    ev = {"type": "Error", "status": upstream.status_code, "detail": body[:300]}
+                    yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n".encode()
+                    yield b"data: [DONE]\n\n"
+                    return
                 async for chunk in upstream.aiter_bytes():
                     yield chunk
 
