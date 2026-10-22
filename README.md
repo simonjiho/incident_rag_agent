@@ -18,7 +18,7 @@ Base(`all_total_vue`)는 장애 시스템의 모니터링 알림 문구를 **키
 | 계획 보정 | 소형 모델이 시스템명을 틀리면 그 시스템 조사가 빠짐 | 질의에 이름이 나온 시스템은 항상 조사 (실모델 평가에서 발견) |
 | 사람 승인 | 재시작·롤백 같은 조치도 그대로 내보냄 | 위험 조치가 든 최종안은 `interrupt()`로 멈추고 담당자 승인/거부 (거부하면 그 조치를 빼고 다시 작성) |
 | LLM 백엔드 | fake · Ollama · OpenAI | + Claude(`LLM_BACKEND=anthropic`, Haiku 5.5) — 구조화 출력·토큰 스트리밍 |
-| 검증 | 없음 | pytest 110개, 평가 스크립트 `eval/run_eval.py` |
+| 검증 | 없음 | pytest 112개, 평가 스크립트 `eval/run_eval.py`, 답변 심사 `eval/tools/judge_answers.py` |
 
 ## 결과 (요약)
 
@@ -37,6 +37,8 @@ e2e 12건(정답 (시스템, runbook) 쌍 17개), fake LLM(결정론), 세 서�
 |---|---|---|---|
 | qwen3:0.6b 개선 전 → 후 | 5/17 → **16/17** | 12.3 → 15.4 | +58% (가상 단가) |
 | Claude Haiku 5.5 개선 전 → 후 | 5/17 → **16/17** | 9.2 → 9.2 | +9% (실제 단가, 2회 합계 약 2센트) |
+
+답변 품질(같은 Haiku 답변 24건, Sonnet 5.5가 정답 runbook 기준 5점 채점): 평균 4.33 → **4.92**, 5점 4건 → 11건.
 
 
 runbook 선택기 단독(40건) top-1: 키워드 규칙 30.0% · BM25 62.5% · **hybrid 82.5%** · vector 90.0%.
@@ -68,13 +70,14 @@ API로는 `POST /chat`에 `"hitl": true` → `status=approval_required`와 `run_
 ## 테스트 · 평가 재현
 
 ```bash
-.venv/bin/python -m pytest -q                       # 110 passed, Ollama 불필요
+.venv/bin/python -m pytest -q                       # 112 passed, Ollama 불필요
 .venv/bin/python eval/tools/check_data.py           # 평가 데이터 정합성·누수 검사
 .venv/bin/python eval/run_eval.py selector          # 선택기 단독 (bge-m3 필요)
 LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app --port 8100
 .venv/bin/python eval/run_eval.py e2e --base-url http://127.0.0.1:8100 --label hybrid-fake
 .venv/bin/python eval/run_eval.py compare eval/results/e2e_*.json
 .venv/bin/python eval/tools/search_demo.py                 # MCP search_runbook 직접 호출 (bge-m3 필요)
+.venv/bin/python eval/tools/judge_answers.py eval/results/e2e_before-haiku_*.json eval/results/e2e_after-haiku_*.json  # 답변 심사 (Claude 키, 과금)
 .venv/bin/python eval/tools/trace_tree.py <run_id> --compact  # LangSmith 트레이스 트리 (.env 키 필요)
 ```
 

@@ -7,6 +7,7 @@ Base 그대로 두고, _chat만 Claude Haiku 5.5 호출로 바꾼다. 개선 후
 import os
 
 import anthropic
+from langsmith import traceable
 
 from .openai_llm import OpenAIFastLLM, OpenAIQualityLLM
 
@@ -47,9 +48,27 @@ class _ClaudeTransport:
                       "usd": round(usd, 6)}
 
 
+# Base 메서드 본문(__wrapped__)을 그대로 부르되 LangSmith 기록 이름만 anthropic_*로 바꾼다
 class AnthropicFastLLM(_ClaudeTransport, OpenAIFastLLM):
-    pass
+    @traceable(run_type="llm", name="anthropic_fast.route")
+    def route(self, query):
+        return OpenAIFastLLM.route.__wrapped__(self, query)
+
+    @traceable(run_type="llm", name="anthropic_fast.plan")
+    def plan(self, query, procedure_prompt):
+        return OpenAIFastLLM.plan.__wrapped__(self, query, procedure_prompt)
+
+    @traceable(run_type="llm", name="anthropic_fast.analyze")
+    def analyze(self, collected):
+        return OpenAIFastLLM.analyze.__wrapped__(self, collected)
+
+    @traceable(run_type="llm", name="anthropic_fast.chat")
+    async def chat(self, query, history, on_token=None):
+        return await OpenAIFastLLM.chat.__wrapped__(self, query, history, on_token)
 
 
 class AnthropicQualityLLM(_ClaudeTransport, OpenAIQualityLLM):
-    pass
+    @traceable(run_type="llm", name="anthropic_quality.write")
+    async def write(self, query, collected, attempt, feedback, on_token=None):
+        return await OpenAIQualityLLM.write.__wrapped__(self, query, collected, attempt,
+                                                        feedback, on_token)

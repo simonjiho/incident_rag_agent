@@ -65,7 +65,7 @@ async def select_runbooks(state: AgentState, deps: SupervisorDeps) -> dict:
     selections = await asyncio.gather(*(select_one(s) for s in targets))
     events += [{"type": "RunbookSelected", "system": s.system, "incident_type": s.incident_type,
                 "score": s.score, "method": s.method, "fallback": s.fallback,
-                "reason": s.reason} for s in selections]
+                "reason": s.reason, "margin": s.margin} for s in selections]
     return {"runbook_selections": state.get("runbook_selections", []) +
             [asdict(s) for s in selections],
             "events": state["events"] + events}

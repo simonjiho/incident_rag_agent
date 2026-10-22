@@ -159,7 +159,9 @@ const STEP_LABELS = {
     if (!e.incident_type) return `runbook 선택 실패: ${e.system}${e.reason ? ` (${e.reason})` : ''}`;
     const score = e.score != null ? `, 점수 ${e.score.toFixed(2)}` : '';
     const note = e.fallback ? ` — ${FALLBACK_NOTES[e.reason] || '키워드 규칙으로 대체'}` : '';
-    return `runbook 선택: ${e.system} → ${e.incident_type} (${e.method}${score})${note}`;
+    // 1·2위 cosine 차가 0.01 미만이면 근소 — 선택은 그대로 두고 사람이 확인하도록 표시만 한다
+    const close = e.margin != null && e.margin < 0.01 ? ` — 1·2위 차 ${e.margin.toFixed(4)}, 근소` : '';
+    return `runbook 선택: ${e.system} → ${e.incident_type} (${e.method}${score})${note}${close}`;
   },
   // reason = '모든 시스템 정상' 또는 '모니터링에 없는 시스템' (systems에 해당 시스템)
   RunbookSkipped: e => `${e.reason || '모든 시스템 정상'}${e.systems?.length ? `(${e.systems.join(', ')})` : ''} — runbook 생략`,

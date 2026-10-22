@@ -1,0 +1,193 @@
+{
+  "label": "before-haiku",
+  "source": "e2e_before-haiku_20261022-103346.json",
+  "judge_model": "claude-sonnet-5-5",
+  "summary": {
+    "cases": 12,
+    "mean_score": 4.33,
+    "score_counts": {
+      "5": 4,
+      "4": 8,
+      "3": 0,
+      "2": 0,
+      "1": 0
+    },
+    "systems_correct": "17/17",
+    "fabricated": 1
+  },
+  "verdicts": [
+    {
+      "id": "e01",
+      "expected": {
+        "auth-service": "high-latency"
+      },
+      "score": 5,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "auth-service를 high-latency 유형으로 정확히 짚고 runbook 절차 1~5를 빠짐없이 적용했으며, CPU 83.4%·메모리 63.7%는 모니터링 범위 안이고 알림 수치도 일치하며 확인되지 않은 항목은 확정할 수 없다고 명시해 지어낸 내용이 없다.",
+      "usage": {
+        "input": 2348,
+        "output": 161
+      }
+    },
+    {
+      "id": "e02",
+      "expected": {
+        "payments-service": "cpu-spike"
+      },
+      "score": 5,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "CPU 급증 runbook을 정확히 짚었고 배포 롤백 검토, 스레드 덤프 확인, 오토스케일링 인스턴스 추가, 프로파일링 후 최적화 등록 절차를 모두 제시했으며, CPU 98.4%와 메모리 58.7%는 모니터링 범위 안의 값이고 알림 내용도 일치하며 지어낸 사실이 없다.",
+      "usage": {
+        "input": 2287,
+        "output": 179
+      }
+    },
+    {
+      "id": "e03",
+      "expected": {
+        "cache-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "score": 4,
+      "systems_correct": 2,
+      "fabricated": false,
+      "reason": "cache-service는 메모리 누수 runbook 절차(OOM 임박 시 재시작과 임시 조치 기록, 힙 덤프, 배포 패턴 점검, 롤백)를 충실히 따랐고 수치(CPU 43.0%, 메모리 89.5%)도 범위 안이라 지어낸 내용이 없다. gateway-service는 네트워크 타임아웃으로 유형은 맞게 짚었으나 조치가 방화벽/보안그룹/DNS/헬스체크 변경 점검, 우회 라우팅, 타임아웃 임계값 상향, 재시도 정책 재검토 같은 runbook 절차 없이 일반적인 구간 점검에 그쳐 다소 빈약하다.",
+      "usage": {
+        "input": 3319,
+        "output": 291
+      }
+    },
+    {
+      "id": "e04",
+      "expected": {
+        "log-service": "disk-full"
+      },
+      "score": 4,
+      "systems_correct": 1,
+      "fabricated": true,
+      "reason": "log-service를 disk-full로 정확히 진단했고 runbook의 5단계 절차(사용률 확인, 정리, 로그 레벨·로테이션, 볼륨 확장, 재발 방지)를 빠짐없이 따랐으며 CPU 21.5%, 메모리 35.7%도 범위 안이다. 다만 기준 자료에 없는 web-01 수치(CPU 40.8%, 메모리 51.4%)와 \"disk space low 알림 2건\"이라는 표현이 들어가 있어 모니터링 범위를 벗어난 내용으로 보이므로 감점한다.",
+      "usage": {
+        "input": 2258,
+        "output": 245
+      }
+    },
+    {
+      "id": "e05",
+      "expected": {
+        "ledger-service": "db-lock"
+      },
+      "score": 4,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "CPU 26.0%와 메모리 54.0%는 모니터링 범위 안이고 알림 내용도 정확하며, db-lock으로 올바르게 진단해 블로커 식별·세션 종료(담당자 확인)·트랜잭션 단축과 타임아웃 재검토를 제시했으나, pg_stat_activity/SHOW ENGINE INNODB STATUS 같은 구체 명령, KILL/pg_terminate_backend, DDL 메타데이터 락 점검, 긴 트랜잭션 알림 설정 등이 빠져 절차가 다소 일반적이다.",
+      "usage": {
+        "input": 2415,
+        "output": 242
+      }
+    },
+    {
+      "id": "e06",
+      "expected": {
+        "portal-service": "cert-expiry"
+      },
+      "score": 4,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "인증서 만료로 정확히 진단하고 수치(CPU 17.3%, 메모리 40.1%)도 범위 안이며 갱신·교체, 재확인, 30일 전 알림 등 핵심 절차를 담았으나, openssl s_client로 notAfter 확인, 체인/계층 점검, 인그레스 reload, 자동 갱신 실패 원인 분석 같은 세부 단계가 빠져 약간 빈약하다.",
+      "usage": {
+        "input": 2264,
+        "output": 190
+      }
+    },
+    {
+      "id": "e07",
+      "expected": {
+        "search-service": "dns-failure",
+        "notification-service": "queue-backlog"
+      },
+      "score": 4,
+      "systems_correct": 2,
+      "fabricated": false,
+      "reason": "두 시스템의 유형(DNS 실패, 큐 적체)을 올바르게 짚었고 CPU·메모리 등 수치도 모니터링 범위 안이며 지어낸 내용은 없다. 다만 search-service는 IP 직접 호출 비교, CoreDNS 재시작·확장, hosts 등록 같은 우회책이 빠졌고, notification-service는 컨슈머 수·파티션 병렬도 확대와 poison message의 DLQ 격리 같은 적체 해소 조치가 약해 절차가 다소 빈약하다. 존재하지 않는 DB Down runbook을 언급한 점도 군더더기다.",
+      "usage": {
+        "input": 3971,
+        "output": 261
+      }
+    },
+    {
+      "id": "e08",
+      "expected": {
+        "shipping-service": "rate-limit"
+      },
+      "score": 5,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "외부 운송사 API의 429(일일 쿼터 소진)와 재시도 폭주를 rate-limit으로 정확히 진단했고, 지수 백오프, 쿼터 리셋 시점·증설 확인, 정상화 후 재시도 정책과 알람 재점검 등 runbook 절차에 부합하며, CPU 25.8%와 메모리 41.4%도 모니터링 범위 안이라 지어낸 내용이 없다.",
+      "usage": {
+        "input": 2226,
+        "output": 190
+      }
+    },
+    {
+      "id": "e09",
+      "expected": {
+        "invoice-service": "config-error"
+      },
+      "score": 5,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "답변은 invoice-service를 config-error(v2.31 롤아웃 후 PAYMENT_API_URL 빈 값, 4개 레플리카 CrashLoopBackOff/readiness 실패)로 정확히 짚었고, 롤백 및 readiness 확인, 설정 diff·원복, CI 검증 추가라는 runbook 절차에 부합하며, CPU 7.8%와 메모리 31.9%도 모니터링 범위 안이라 지어낸 내용이 없다.",
+      "usage": {
+        "input": 2318,
+        "output": 206
+      }
+    },
+    {
+      "id": "e10",
+      "expected": {
+        "inventory-service": "thread-pool-exhaustion",
+        "reporting-service": "replication-lag"
+      },
+      "score": 4,
+      "systems_correct": 2,
+      "fabricated": false,
+      "reason": "inventory-service는 스레드 풀 고갈, reporting-service는 복제 지연으로 정확히 분류했고 CPU·메모리 수치도 모니터링 범위 안이며 지어낸 내용이 없다. 다만 inventory 절차에서 서킷 브레이커, 재시작·인스턴스 확장, bulkhead 같은 runbook 항목이 빠졌고, reporting에서도 복제 I/O·SQL 스레드 상태 확인과 대량 작업 분할 조치가 빠져 약간 빈약하며, 참조한 runbook 단계 번호나 임계치(90%)에도 기준 자료와 맞지 않는 부분이 있다.",
+      "usage": {
+        "input": 4046,
+        "output": 270
+      }
+    },
+    {
+      "id": "e11",
+      "expected": {
+        "recommend-service": "memory-leak"
+      },
+      "score": 4,
+      "systems_correct": 1,
+      "fabricated": false,
+      "reason": "메모리 누수(OOMKilled, RSS 증가)로 올바르게 진단했고 CPU 47.3%·메모리 94.6% 등 수치도 모니터링 범위 안이며 롤백, 힙 덤프, 캐시/컬렉션 점검 등 runbook 핵심 절차를 담았지만, 90% 이상일 때 즉시 재시작하고 임시 조치로 기록하라는 단계와 컨테이너 메모리 상한 재확인 조정이 빠져 있고 'DB Down runbook이 첨부됐다'는 기준 자료에 없는 언급이 있어 한 단계 감점했다.",
+      "usage": {
+        "input": 2341,
+        "output": 256
+      }
+    },
+    {
+      "id": "e12",
+      "expected": {
+        "ledger-service": "db-lock",
+        "recommend-service": "memory-leak",
+        "gateway-service": "network-timeout"
+      },
+      "score": 4,
+      "systems_correct": 3,
+      "fabricated": false,
+      "reason": "세 시스템 모두 runbook 유형(db-lock, memory-leak, network-timeout)에 맞게 진단했고 수치(CPU·메모리 범위, 알림, blocked sessions 37)도 모니터링 값과 일치하며 지어낸 내용은 없다. 다만 recommend-service는 OOM 직전(90% 이상)인데 즉시 재시작하라는 runbook 2단계가 빠졌고, ledger는 락 DDL 점검이나 알림 설정 같은 후속 조치가 빈약해 사소한 누락이 있다.",
+      "usage": {
+        "input": 4975,
+        "output": 230
+      }
+    }
+  ]
+}

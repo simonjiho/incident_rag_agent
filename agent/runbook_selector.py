@@ -32,6 +32,20 @@ class Selection:
     fallback: bool = False        # 설정한 방식 대신 다른 방식(키워드 규칙·BM25만)으로 골랐으면 True
     candidates: list[dict] = field(default_factory=list)   # RAG 후보 top-k (유형·점수)
     reason: str = ""              # 폴백·실패 사유: low-score / degraded / no-hit / replan / error
+    margin: float | None = None   # RAG 1위 cosine − 나머지 후보 중 최고 cosine (작을수록 근소)
+
+
+NEAR_TIE = 0.01   # 1·2위 cosine 차가 이보다 작으면 화면에 '근소'로 표시한다 (선택은 바꾸지 않음)
+
+
+def top_margin(hits: list[dict]) -> float | None:
+    """1위 cosine이 나머지 후보 중 가장 높은 cosine보다 얼마나 앞서는가 — 확신도 표시용.
+    hybrid는 RRF 순위로 1위를 정하므로 음수(다른 후보의 cosine이 더 높음)도 나올 수 있다."""
+    top = hits[0].get("vector_score") if hits else None
+    others = [h["vector_score"] for h in hits[1:] if h.get("vector_score") is not None]
+    if top is None or not others:
+        return None
+    return round(top - max(others), 4)
 
 
 def needs_runbook(monitoring: dict) -> bool:
@@ -108,7 +122,7 @@ class McpRagSelector:
         if score is not None and score < self.min_score:
             return self._fallback(monitoring, score, candidates, "low-score")
         return Selection(system, top["incident_type"], None if score is None else round(score, 4),
-                         self.name, candidates=candidates)
+                         self.name, candidates=candidates, margin=top_margin(hits))
 
     def _fallback(self, monitoring: dict, score, candidates: list[dict], reason: str) -> Selection:
         """키워드 규칙 결과에 RAG 후보와 폴백 사유를 붙인다 (score = 기각된 RAG 점수)."""

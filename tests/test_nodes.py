@@ -137,7 +137,8 @@ async def test_select_runbooks_per_unhealthy_system(deps):
     assert [e["type"] for e in out["events"]] == ["RunbookSelected", "RunbookSelected"]
     assert out["events"][0] == {"type": "RunbookSelected", "system": "auth-service",
                                 "incident_type": "high-latency", "score": 0.71,
-                                "method": "hybrid", "fallback": False, "reason": ""}
+                                "method": "hybrid", "fallback": False, "reason": "",
+                                "margin": 0.11}
 
 
 async def test_select_runbooks_skips_when_all_healthy(deps, fake_mcp):

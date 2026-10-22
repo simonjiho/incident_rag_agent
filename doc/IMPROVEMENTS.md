@@ -47,10 +47,12 @@ runbook 선택기 단독(selector_cases 40건) top-1 — `eval/results/selector_
 | 5 | 계획(plan)에 runbook 조회가 없어서 **모든** 장애 요청이 replan_check에서 "runbook 없음 → 추가 조사" 라운드를 탔다. 재계획이 예외 처리가 아니라 정상 경로였다. | **Dynamic Planning 재정의**: runbook 선택이 계획된 단계가 됐고, replan_check는 "장애 시스템마다 runbook이 붙었는가"를 검사한다. 빠진 시스템이 있을 때만 1회 다시 조사한다 — 선택기가 실패한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다. |
 | 6 | `agent/graph.py` 한 파일에 노드 10개·규칙·상태가 다 있었다. | **모듈화**: `state.py`, `rules.py`, `runbook_selector.py`, `agents/`, `nodes/`(파일 하나에 노드 하나). |
 | 7 | 선택 방식을 바꾸려면 노드 코드를 고쳐야 했다. | **DI**: `SupervisorDeps.runbook_selector`. 서버가 `RUNBOOK_SELECTOR`로 만들어 주입하고, 노드는 `selector.select()`만 부른다. |
-| 8 | 테스트가 없었다. | **pytest 110개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
+| 8 | 테스트가 없었다. | **pytest 112개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
 | 9 | Before/After를 잴 방법이 없었다. | **`eval/run_eval.py`**: selector / threshold / e2e / compare 서브커맨드. 개선 전 서버에도 그대로 돌아간다. |
 | 10 | (실모델에서 발견) 소형 모델(qwen3:0.6b)이 계획에서 시스템명을 틀리게 쓰면, 보정 코드가 그 이름을 '쿼리에서 처음 나온 시스템'으로 바꾸고 중복으로 버려 **그 시스템 조사가 통째로 빠졌다** (e10 reporting-service, e12 recommend-service·gateway-service). | **계획 보정**: 쿼리에 이름이 그대로 나온 시스템은 모델이 빠뜨려도 항상 조사한다(`ollama_llm.py`·`openai_llm.py`의 `plan()`). 모델 판단을 코드로 바로잡는 권위 게이트와 같은 원칙. 재현 테스트 `tests/test_plan_guard.py`. |
 | 11 | 최종안에 서비스 재시작·롤백·세션 강제 종료 같은 조치가 있어도 그대로 내보냈다. | **사람 승인(HITL)**: validate를 통과한 최종안에서 위험 조치 문장을 코드로 찾고(`agent/nodes/approval.py`), 있으면 LangGraph `interrupt()`로 멈춘다. 승인하면 그대로, 거부하면 그 조치를 빼라는 피드백으로 한 번 다시 쓴다(다시 쓴 안도 거부하면 "보류" 표시를 붙여 내보낸다). 요청에 `hitl=true`일 때만 동작한다 — 웹 화면은 켜고, API·평가는 기본으로 끈다. |
+| 13 | RRF 동점처럼 근소하게 갈린 선택도 다른 선택과 똑같이 보였다. | **1·2위 점수 차 기록**: `Selection.margin` = RAG 1위 cosine − 나머지 후보 중 최고 cosine. 0.01 미만이면 화면 진행 단계에 "근소"로 표시한다. 선택 규칙은 바꾸지 않는다(사람이 한 번 더 보라는 신호). e03 cache-service가 0.0007로 걸린다. |
+| 14 | 답변 품질을 재지 않았다 — e2e는 정답 runbook을 읽었는지만 셌다. | **LLM-as-judge**: `eval/tools/judge_answers.py`. e2e 결과 파일의 답변을 다른 모델(Sonnet 5.5)이 정답 runbook과 모니터링 범위를 기준으로 5점 채점한다. 어느 버전 답변인지는 알려 주지 않는다(§6.6). |
 | 12 | 실모델 백엔드가 Ollama·OpenAI뿐이었다. | **Claude 백엔드**: `LLM_BACKEND=anthropic`(`agent/anthropic_llm.py`, 기본 `claude-haiku-5-5`). 실험·개선에 사용(§6.5). route·plan은 json_schema 구조화 출력, chat·write는 토큰 스트리밍. |
 
 ## 2. 새 그래프
@@ -106,6 +108,8 @@ flowchart LR
 
 실행 화면(Claude Haiku 5.5, ledger-service): 승인 요청 `doc/captures/hitl_approval_request.png` → 사유를 적어 거부한 뒤 세션 강제 종료를 뺀 재작성 `doc/captures/hitl_after_reject.png`.
 
+개선 사항별 실제 실행 화면(Claude Haiku 5.5, 발표 자료 부록 1~6): `doc/captures/appendix/` — 시스템별 선택(a1), 시스템 3개 조사(a2), 1·2위 차 '근소' 표시(a3), 정상 시스템 건너뜀(a4), 임베딩 서버를 끈 상태의 BM25 폴백(a5), 승인 → 거부 → 재작성 → 두 번째 거부 후 보류 표시(a6). LangSmith 개선 전·후 트리: `doc/captures/langsmith_tree_before_haiku.png`, `langsmith_tree_after_haiku.png`.
+
 `/chat/stream`은 `subgraphs=True`로 스트리밍해서 서브 에이전트 안쪽 노드(collect_metrics, select_runbooks, read_runbooks)가 끝날 때마다 이벤트가 나간다. 이벤트에 `node`와 `agent`(어느 서브 에이전트인지)가 붙는다. runbook_agent가 내는 이벤트는 `RunbookSelected`, `RunbookSkipped`(정상 / 모니터링에 없는 시스템), `TaskCompleted`, `RunbookShared`(이미 읽은 유형에 시스템 추가), `RunbookReadFailed`다.
 
 ## 3. 변경 파일 지도
@@ -117,7 +121,7 @@ flowchart LR
 | `rag/index.py` | 신규 | `RunbookIndex.search(query, top_k, mode)` — vector / bm25 / hybrid(RRF). 임베딩 실패 시 BM25로 내려가고 `degraded=True` |
 | `mcp_server.py` | 수정 | Tool `search_runbook` 추가 (기존 Tool/Resource/Prompt는 그대로) |
 | `agent/mcp_client.py` | 수정 | `list_tools`, `find_tool` — `find_prompt`처럼 연결된 서버를 조회해 Tool을 가진 서버를 찾는다 |
-| `agent/runbook_selector.py` | 신규 | `Selection`, `needs_runbook`, `build_search_text`, `KeywordSelector`, `McpRagSelector`, `build_selector` |
+| `agent/runbook_selector.py` | 신규 | `Selection`(+`margin`), `needs_runbook`, `build_search_text`, `top_margin`, `KeywordSelector`, `McpRagSelector`, `build_selector` |
 | `agent/agents/monitoring_agent.py` | 신규 | `build_monitoring_agent` — collect_metrics (개선 전 research의 모니터링 부분) |
 | `agent/agents/runbook_agent.py` | 신규 | `build_runbook_agent` — select_runbooks → read_runbooks, `missing_systems` |
 | `agent/nodes/replan_check.py` | 수정 | runbook 없는 장애 시스템 검사 → 1회 재조사 (선택 실패는 키워드 재선택, 조회 실패는 재조회) |
@@ -134,7 +138,8 @@ flowchart LR
 | `web_demo_server.py` | 수정 | `/chat/resume`·`/chat/approve` 중계, 쿼리 파라미터 그대로 전달 |
 | `data/runbooks/*.md`, `data/monitoring.json` | 수정·신규 | runbook 14종, 시스템 15개 |
 | `eval/*` | 신규 | 평가셋, `check_data.py`, `run_eval.py`, `results/` |
-| `tests/*`, `pytest.ini` | 신규 | pytest 110개 (`test_plan_guard.py`: 계획 보정 재현 7개, `test_approval.py`: 사람 승인 11개, `test_anthropic_llm.py`: Claude 백엔드 10개 포함) |
+| `eval/tools/judge_answers.py` | 신규 | LLM-as-judge — e2e 답변을 Sonnet 5.5가 5점 채점, `eval/results/judge_*.json` |
+| `tests/*`, `pytest.ini` | 신규 | pytest 112개 (`test_plan_guard.py`: 계획 보정 재현 7개, `test_approval.py`: 사람 승인 11개, `test_anthropic_llm.py`: Claude 백엔드 10개 포함) |
 | `eval/base_patch/` | 신규 | 개선 전 코드를 Claude로 돌리는 평가 전용 어댑터와 적용법 |
 
 ## 4. 설계 이유와 트레이드오프
@@ -334,6 +339,23 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 - 정답 수는 fake·qwen3:0.6b와 같고, 유일한 오답도 같은 e03 cache-service(RRF 동점, §6.2)다.
 - 지연 차이 없음, 비용 +9%(qwen3:0.6b는 +3.1s, +58%). 검증 시도 평균 1.
 
+### 6.6 답변 품질 (LLM-as-judge)
+
+§6.5의 Haiku 답변 24건을 `eval/tools/judge_answers.py`로 채점했다. 심사는 Sonnet 5.5(답변을 쓴 Haiku와 다른 모델), effort medium, 5점 척도. 기준 자료는 정답 runbook 본문과 해당 시스템의 모니터링 범위(Tool이 호출마다 흔들림을 더하므로 범위로 준다)이고, 어느 버전 답변인지는 알려 주지 않는다.
+
+| 지표 | 개선 전 코드 | 개선 후 + hybrid |
+|---|---|---|
+| 결과 파일 | `judge_before-haiku_20261022-112236.json` | `judge_after-haiku_20261022-112236.json` |
+| 평균 점수 (5점) | 4.33 | **4.92** |
+| 점수 분포 5·4·3·2·1 | 4 · 8 · 0 · 0 · 0 | 11 · 1 · 0 · 0 · 0 |
+| 맞는 절차를 받은 시스템 (심사 판정) | 17/17 | 17/17 |
+| 범위를 벗어난 수치·사실 (건) | 1 | 0 |
+
+- 개선 전에도 Haiku는 알림 문구만 보고 장애 유형을 대부분 맞혔다(심사 기준 17/17). 차이는 **구체 절차**다. 개선 전 답변은 `pg_stat_activity`·`KILL`, `openssl` 확인, 컨슈머 증설 같은 runbook 단계가 빠져 4점이 많았고, 개선 후에는 runbook 5단계를 그대로 따라 11/12가 5점이다.
+- 유일한 개선 후 4점은 e03 cache-service — 선택기가 disk-full runbook을 붙인 RRF 동점 사례(§6.2)라 답변에 "디스크 용량 부족 runbook"이 섞였다.
+- 첫 채점에서는 스크립트가 모니터링 기준값(`cpu_base`)을 읽지 못해 심사 모델이 모든 수치를 "지어냈다"고 깎았다(평균 2.08 → 2.92). Tool이 기준값에 흔들림을 더한다는 점을 반영해 범위로 넘기도록 고친 뒤 다시 돌린 결과가 위 표다.
+- 심사는 1회, 심사 기준은 직접 만들었고 사람 평가와 대조하지 않았다(§7).
+
 ## 7. 한계
 
 - **데이터가 작고 합성이다.** selector 40건(1건 = 2.5%p), e2e 12건(정답 쌍 17개). 소수점 차이에는 의미를 두지 않는다.
@@ -346,4 +368,6 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 - **BM25 토크나이저가 단순하다.** 형태소 분석 없이 한글 어절 + 글자 bigram이다. 조사 붙은 단어는 bigram으로 어느 정도 잡지만 동의어·약어는 못 잡는다.
 - **벡터 DB 없이 numpy 내적.** runbook 14종·청크 124개라 전수 비교로 충분하다. 문서가 수천 개로 늘면 ANN 인덱스(벡터 DB)가 필요하다. MCP 서버가 뜰 때 인덱스를 한 번 만들므로 runbook을 고치면 서버를 재시작해야 한다.
 - **위험 조치 탐지는 단어 목록이다.** 영어 동사는 단어 단위로만 잡아 `pod restarted`·`OOMKilled` 같은 알림 인용은 거르지만, "재시작은 임시 조치일 뿐" 같은 한국어 설명 문장은 걸리고, 목록에 없는 표현("파드를 내린다")은 놓친다. 오탐은 사람이 승인 한 번으로 넘기면 되지만 미탐은 그대로 나간다. 승인 대기 상태는 메모리(`InMemorySaver`)에 있어 서버를 재시작하면 사라지고, 대기 시간 제한도 없다(같은 대화로 새 질문을 보내면 취소된다).
-- **fake LLM 결과는 선택 품질만 보여 준다.** 답변 문장 품질은 실모델(Ollama/OpenAI) e2e로 따로 봐야 한다. 지연은 모두 1회 실행 값이다.
+- **fake LLM 결과는 선택 품질만 보여 준다.** 답변 문장 품질은 실모델 e2e와 LLM 심사(§6.6)로 따로 봤다. 지연은 모두 1회 실행 값이다.
+- **답변 심사는 LLM 1회다.** 심사 기준(5점 척도)을 직접 정했고, 사람이 채점한 결과와 맞는지 확인하지 않았다. 같은 답변을 다시 심사하면 점수가 달라질 수 있다.
+- **'근소' 표시는 신호일 뿐이다.** 1·2위 차 0.01은 e03 한 건을 보고 고른 표시 기준이고, 선택을 바꾸지 않는다. 근소한 선택을 실제로 다시 고르려면 리랭커가 필요하다.

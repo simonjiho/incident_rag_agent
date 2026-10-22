@@ -155,3 +155,18 @@ async def test_mcp_client_find_tool_searches_connected_servers():
     assert await client.find_tool("search_runbook") == "ops"
     with pytest.raises(ValueError):
         await client.find_tool("no_such_tool")
+
+
+def test_top_margin_flags_near_tie():
+    """e03 cache-service 재현 — RRF 1위 disk-full과 2위 memory-leak의 cosine 차가 0.0007."""
+    from agent.runbook_selector import NEAR_TIE, top_margin
+    hits = search_result(("disk-full", 0.6052), ("memory-leak", 0.6045), ("cpu-spike", 0.51))["hits"]
+    assert top_margin(hits) == 0.0007 and top_margin(hits) < NEAR_TIE
+    assert top_margin(search_result(("db-lock", 0.66), ("network-timeout", 0.58))["hits"]) == 0.08
+    assert top_margin(search_result(("db-lock", 0.66))["hits"]) is None          # 후보 하나
+    assert top_margin(search_result(("db-lock", 0.6), degraded=True)["hits"]) is None   # BM25만
+
+
+async def test_rag_selection_records_margin(fake_mcp):
+    sel = await McpRagSelector(fake_mcp, "hybrid", min_score=0.5).select("쓰기가 멈췄어요", LEDGER)
+    assert sel.incident_type == "db-lock" and sel.margin == 0.08

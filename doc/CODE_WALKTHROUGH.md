@@ -14,7 +14,7 @@
 4. 장애 유형에 맞는 대응 매뉴얼(runbook)을 읽는다 (MCP **Resource**)
 5. LLM이 수치와 매뉴얼을 묶어 진단 보고를 쓰고, 형식 검사를 통과하면 답한다
 
-이번 개선은 **4번에서 "어떤 매뉴얼을 고르느냐"** 를 바꾼 것이다. 나머지 흐름은 Base와 같다.
+핵심 개선은 **4번에서 "어떤 매뉴얼을 고르느냐"** 를 바꾼 것이다. 그 밖에 5번 뒤에 **사람 승인** 단계를 붙였다(재시작·롤백 같은 조치가 있으면 멈추고 묻는다). 나머지 흐름은 Base와 같다.
 
 ---
 
@@ -25,7 +25,7 @@
    │  http://localhost:8600
 web_demo_server.py        ← 화면 파일을 주고 요청을 백엔드로 넘겨 주는 중계(프록시)
    │  http://localhost:8100
-server.py (FastAPI)       ← /chat, /chat/stream. 서버가 켜질 때 그래프·LLM·MCP 연결을 한 번 만든다
+server.py (FastAPI)       ← /chat, /chat/stream (+ 승인 후 재개 /chat/approve, /chat/resume). 서버가 켜질 때 그래프·LLM·MCP 연결을 한 번 만든다
    │
 agent/graph.py (LangGraph) ← 노드들을 잇는 흐름
    │
@@ -34,7 +34,8 @@ agent/mcp_client.py       ← MCP 서버와 통신 (stdio, 별도 프로세스)
 mcp_server.py             ← Tool / Resource / Prompt 제공. data/ 폴더를 읽는다
 ```
 
-**안 바꾼 것**: 화면, 프록시, server.py의 골격, LLM 세 종류(fake / ollama / openai), 세션 저장(SQLite), 재시도(`retry.py`), v1 legacy 경로.
+**안 바꾼 것**: server.py의 골격(lifespan에서 한 번 생성, /chat·/chat/stream), 세션 저장(SQLite), 재시도(`retry.py`), v1 legacy 경로.
+**덧붙인 것**: 화면(새 진행 단계·승인 카드), 프록시(승인 중계), LLM 백엔드 하나(fake / ollama / openai + **anthropic**).
 
 ---
 
@@ -98,7 +99,7 @@ route → plan → gate → monitoring_agent → runbook_agent → replan_check 
 | replan_check | runbook 없으면 키워드로 하나 골라 재조사 | "장애 시스템마다 runbook이 붙었나" 검사. 빠진 시스템만 1회 재시도 |
 | (없음) | — | **`approval`** 사람 승인: 최종안에 재시작·롤백 같은 조치가 있으면 멈추고 담당자에게 묻는다 (§8-2) |
 
-`agent/graph.py`는 이제 노드를 잇는 77줄짜리 조립 파일이다.
+`agent/graph.py`는 이제 노드를 잇는 87줄짜리 조립 파일이다.
 
 ---
 
@@ -107,7 +108,7 @@ route → plan → gate → monitoring_agent → runbook_agent → replan_check 
 괄호 안은 실행되는 파일과 함수.
 
 **① 요청 받기** (`server.py` → `/chat` → `_handle_chat`)
-세션 이력을 불러와 `graph.ainvoke({"query": ..., "history": ..., "events": []})`를 부른다. 그래프는 서버가 켜질 때 `lifespan`에서 한 번만 만들어 둔 것이다(싱글턴).
+세션 이력을 불러와 `graph.ainvoke({"query": ..., "history": ..., "events": [], "hitl": ...}, config)`를 부른다. 그래프는 서버가 켜질 때 `lifespan`에서 한 번만 만들어 둔 것이다(싱글턴). `config`에는 요청마다 새로 만든 체크포인트 이름(`run_id`)이 들어간다 — 사람 승인으로 멈췄을 때 이어 가기 위한 것이다.
 
 **② route** (`agent/nodes/route.py`)
 fast LLM이 "incident"로 분류 → `plan`으로.
@@ -131,6 +132,7 @@ fast LLM이 "incident"로 분류 → `plan`으로.
 - `selector`는 `deps.runbook_selector` — 서버가 환경변수 `RUNBOOK_SELECTOR`(기본 hybrid)로 만들어 넣어 준 객체다 (§6).
 - 결과는 `runbook_selections`에 쌓이고, 화면에 `RunbookSelected` 이벤트로 보인다:
   `ledger-service → db-lock (hybrid, 점수 0.71)`, `portal-service → cert-expiry (hybrid, 점수 0.69)`
+  1·2위 cosine 차가 0.01보다 작으면 끝에 `— 1·2위 차 0.0007, 근소`가 붙는다(§6).
 
 **⑦ runbook_agent — read_runbooks**
 - 고른 유형별로 **한 번씩만** MCP Resource `runbook://incident-response/{유형}`을 읽는다. 같은 유형인 시스템끼리는 묶는다.
@@ -176,6 +178,7 @@ runbook마다 `## 증상` 항목을 **한 줄씩 청크**로 쪼갠다(제목 + 
 - 임베딩 호출이 실패하면 BM25만으로 순위를 내고 `degraded=true`로 알린다.
 - 한 번 실패하면 30초 동안은 Ollama를 부르지 않는다(서킷 브레이커). 질의 임베딩은 5초 안에 안 오면 포기한다.
 - 청크 임베딩은 `data/.rag_cache/`에 저장해 두고, 서버를 다시 켜도 다시 계산하지 않는다.
+- 질의 임베딩은 MCP 서버 프로세스 메모리에 캐시한다(같은 알림 문장은 Ollama를 다시 부르지 않는다). 그래서 Ollama를 꺼도 이미 한 번 검색한 시스템은 그대로 hybrid로 나온다.
 
 ---
 
@@ -195,6 +198,8 @@ runbook마다 `## 증상` 항목을 **한 줄씩 청크**로 쪼갠다(제목 + 
 1위 cosine < 0.52            → 키워드 규칙   (RRF 점수는 순위라 절대값 의미가 없어서 cosine에만 건다)
 그 외                        → RAG 1위
 ```
+
+RAG 1위를 고를 때 `margin`(1위 cosine − 나머지 중 최고 cosine)도 기록한다. 0.01보다 작으면 화면에 "근소"로 표시만 하고 선택은 바꾸지 않는다. e2e 유일한 오답(e03 cache-service, 0.0007)이 여기에 걸린다.
 
 ### 의존성 주입 (DI)
 - `server.py`의 `lifespan`에서 `build_selector(mcp, RUNBOOK_SELECTOR)`로 선택기를 만든다.
@@ -220,7 +225,7 @@ def build_runbook_agent(deps):
 ```
 
 메인 그래프에서는 이걸 노드 하나처럼 붙인다: `g.add_node("runbook_agent", build_runbook_agent(deps))`.
-상태(`AgentState`)를 같이 쓰므로 메인 그래프와 데이터를 주고받는 코드가 따로 없다. LangSmith에서는 서브 에이전트 안쪽이 따로 묶여 보인다(발표 자료 7번 장). `/chat/stream`은 `subgraphs=True`로 스트리밍해서 서브 에이전트 안쪽 노드가 끝날 때마다 화면에 단계가 찍힌다.
+상태(`AgentState`)를 같이 쓰므로 메인 그래프와 데이터를 주고받는 코드가 따로 없다. LangSmith에서는 서브 에이전트 안쪽이 따로 묶여 보인다(발표 자료 9쪽 — 개선 전·후 트리 비교). `/chat/stream`은 `subgraphs=True`로 스트리밍해서 서브 에이전트 안쪽 노드가 끝날 때마다 화면에 단계가 찍힌다.
 
 ---
 
@@ -228,7 +233,7 @@ def build_runbook_agent(deps):
 
 **증상**: qwen3:0.6b로 돌리니 시스템 3개 질의에서 2개가 조사에서 통째로 빠졌다.
 
-**원인** (`agent/ollama_llm.py`, `openai_llm.py`의 `plan()` — Base 코드):
+**원인** (`agent/ollama_llm.py`, `openai_llm.py`의 `plan()` — Base 코드. Claude 백엔드는 같은 보정을 `anthropic_llm._normalize_plan`에 넣었다):
 
 ```python
 target = target if target in KNOWN_SYSTEMS else _guess_target(query)  # 이름이 틀리면 → 질의의 첫 시스템으로
@@ -244,7 +249,7 @@ if target in seen: continue                                            # 이미 
 **왜**: runbook에는 "프로세스를 재시작한다", "직전 릴리스로 롤백한다", "`pg_terminate_backend`로 세션을 끊는다" 같은 조치가 있다. 에이전트가 이걸 그대로 운영자에게 내보내면 검토 없이 실행될 수 있다.
 
 **어떻게** (`agent/nodes/approval.py`):
-1. `find_risky_actions(draft)` — 최종안을 문장으로 나눠 위험 단어(재시작·롤백·삭제·kill·failover…)가 든 문장을 찾는다. LLM에게 묻지 않고 코드로 찾는다(gate와 같은 원칙).
+1. `find_risky_actions(draft)` — 최종안을 문장으로 나눠 위험 조치(재시작·롤백·삭제·강제 종료·kill·failover·`kubectl delete`·`DROP DATABASE`…)가 든 문장을 찾는다. 영어 동사는 단어 단위로만 잡아서 `pod restarted`·`OOMKilled` 같은 알림 인용은 거른다. LLM에게 묻지 않고 코드로 찾는다(gate와 같은 원칙).
 2. 있으면 `interrupt({...})` — LangGraph가 그래프를 그 자리에서 멈추고 상태를 체크포인터에 저장한다.
 3. 서버가 사람의 답을 `Command(resume={"approved": ..., "comment": ...})`로 넣으면 approval 노드가 처음부터 다시 실행되고, 이번에는 `interrupt()`가 그 답을 돌려준다.
 4. 승인 → finalize. 거부 → "이 조치는 승인되지 않았다, 빼고 다시 써라"를 `validation_feedback`에 넣어 write로 한 번 더. 다시 쓴 안도 거부하면 "⚠️ 담당자가 승인하지 않아 보류한 조치"를 붙여 내보낸다(무한 반복 방지).
@@ -272,18 +277,20 @@ if target in seen: continue                                            # 이미 
 
 | 구분 | 파일 |
 |---|---|
-| **새로 만든 것** | `rag/` (index · bm25 · embedder), `agent/runbook_selector.py`, `agent/agents/` (monitoring_agent · runbook_agent), `agent/nodes/` (노드 파일 10개, approval 포함), `agent/anthropic_llm.py`, `agent/state.py`, `agent/rules.py`, `tests/`, `eval/`, `sh/run_demo.sh`, `sh/run_agent_anthropic.sh` |
-| **고친 것** | `agent/graph.py`(조립만), `mcp_server.py`(+`search_runbook`), `agent/mcp_client.py`(+`find_tool`), `agent/deps.py`(+`runbook_selector`), `web_demo_server.py`(포트 환경변수, 승인 중계), `server.py`(선택기 주입, `/health`·메타데이터, 서브그래프 스트리밍, 승인 대기·재개, Claude 백엔드), `agent/ollama_llm.py`·`openai_llm.py`·`fake_llm.py`(계획 보정, 답변에 적용 시스템 표시), `web_chat.html`(새 단계 표시, 승인 카드), `data/` (runbook 14종, 시스템 15개) |
+| **새로 만든 것** | `rag/` (index · bm25 · embedder), `agent/runbook_selector.py`, `agent/agents/` (monitoring_agent · runbook_agent), `agent/nodes/` (노드 파일 10개, approval 포함), `agent/anthropic_llm.py`, `agent/state.py`, `agent/rules.py`, `tests/`, `eval/` (`run_eval.py`, `tools/judge_answers.py`, `base_patch/` 등), `sh/run_demo.sh`, `sh/run_agent_anthropic.sh`, `doc/captures/` |
+| **고친 것** | `agent/graph.py`(조립만), `mcp_server.py`(+`search_runbook`), `agent/mcp_client.py`(+`find_tool`), `agent/deps.py`(+`runbook_selector`), `web_demo_server.py`(포트 환경변수, 승인 중계), `server.py`(선택기 주입, `/health`·메타데이터, 서브그래프 스트리밍, 승인 대기·재개, Claude 백엔드), `agent/ollama_llm.py`·`openai_llm.py`·`fake_llm.py`(계획 보정, 답변에 적용 시스템 표시), `web_chat.html`(새 단계 표시, '근소' 표시, 승인 카드), `requirements.txt`(+`anthropic`), `.env.example`(+`ANTHROPIC_API_KEY` 자리), `data/` (runbook 14종, 시스템 15개) |
 | **그대로** | `agent/retry.py`, `agent/session_store.py`, `agent/supervisor_v1.py`, `mcp_server_docs.py` |
 
 ---
 
 ## 10. 테스트와 평가는 무엇을 하나
 
-- **`tests/`** (pytest 110개, Ollama 없이 19초): 가짜 MCP · 가짜 LLM을 deps에 주입해서 노드, 선택기 판단 순서, RAG(가짜 임베딩), 그래프 전체 흐름, 계획 보정, 사람 승인을 검사한다.
+- **`tests/`** (pytest 112개, Ollama 없이 19초): 가짜 MCP · 가짜 LLM을 deps에 주입해서 노드, 선택기 판단 순서, RAG(가짜 임베딩), 그래프 전체 흐름, 계획 보정, 사람 승인을 검사한다.
 - **`eval/run_eval.py selector`**: 평가셋 40건으로 선택기만 비교 (키워드 30% · BM25 62.5% · hybrid 82.5% · vector 90%).
 - **`eval/run_eval.py e2e`**: 서버에 실제로 12건을 보내 정답 runbook을 읽었는지 센다 (5/17 → 16/17 — fake, qwen3:0.6b, Claude Haiku 모두 같음).
 - **`eval/tools/check_data.py`**: 평가 데이터가 runbook 문장을 베끼지 않았는지, 범주가 맞는지 검사한다.
+- **`eval/tools/judge_answers.py`**: e2e 결과 파일의 답변을 Sonnet 5.5가 정답 runbook·모니터링 범위 기준으로 5점 채점한다 (Haiku 답변 4.33 → 4.92).
+- **`eval/base_patch/`**: 개선 전 코드를 같은 Claude 모델로 돌리기 위한 어댑터(전송 계층만 교체)와 적용법.
 
 ---
 
@@ -313,6 +320,9 @@ BM25만으로 계속 고른다(`bm25-degraded`). 한 번 실패하면 30초 동�
 **Q. 5/17 → 16/17은 공정한 비교인가?**
 세 서버 모두 같은 증강 데이터로 돌렸다. 선택기만 바꾼 효과는 6 → 16이다. 늘어난 10쌍은 모두 신규 시스템에서 나왔고, 키워드 규칙 30%는 평가셋을 그렇게 설계한 값이라고 밝혔다.
 
+**Q. 답변 품질은 어떻게 쟀나?**
+e2e는 정답 매뉴얼을 읽었는지만 센다. 그래서 같은 Haiku 답변 24건을 Sonnet이 정답 매뉴얼 기준으로 5점 채점했다(어느 버전인지 숨김). 4.33 → 4.92. 개선 전에도 유형은 대부분 맞혔지만 매뉴얼의 구체 절차가 빠졌다. 심사는 1회이고 사람 평가와 대조하지 않았다.
+
 **Q. 개선의 대가는?**
 qwen3:0.6b 기준 지연 중앙값 +3.1초, 비용 +58%(프롬프트에 매뉴얼이 여러 개 들어감). Claude Haiku에서는 지연 차이 없음, 비용 +9%. 임베딩 모델(bge-m3 1.2GB)이 하나 더 필요하다.
 
@@ -325,3 +335,6 @@ runbook에 재시작·롤백·세션 강제 종료 같은 조치가 있다. 최�
 - `rrf_scores()`: 순위 합치기.
 - `parse_chunks()`: runbook을 증상 한 줄씩 청크로 자른다.
 - `collect_metrics()`: 모니터링 Tool을 병렬 + 재시도로 부른다.
+- `top_margin()`: RAG 1위 cosine이 나머지보다 얼마나 앞서는지 — '근소' 표시용.
+- `find_risky_actions()`: 최종안에서 승인이 필요한 조치 문장을 찾는다.
+- `_stream_graph()` (server.py): 그래프 실행을 SSE로 흘리고, 승인으로 멈추면 `ApprovalRequired`를 보낸다. 새 질문과 승인 후 재개가 같이 쓴다.
