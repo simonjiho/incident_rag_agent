@@ -18,13 +18,13 @@ e2e 12건(정답 (시스템, runbook) 쌍 17개), fake LLM(결정론). 세 서�
 | 가상 비용 합계 (USD) | 0.008059 | 0.008904 | 0.010144 |
 
 이 표를 읽는 법:
-- **RAG만의 효과는 가운데 열 → 오른쪽 열이다**(같은 코드·같은 데이터, 선택기만 교체): 6/17 → 16/17.
+- **RAG만의 효과는 가운데 열 → 오른쪽 열이다**(같은 코드·같은 데이터, selector만 교체): 6/17 → 16/17.
 - 늘어난 10쌍은 **전부 신규 9개 시스템**에서 나왔다(0/11 → 11/11). 이 11쌍 중 9쌍은 키워드 규칙이 애초에 출력할 수 없는 유형(cert-expiry, db-lock 등 신규 8종)이고, 나머지 2쌍(recommend-service의 memory-leak)은 알림에서 `memory`·`heap`을 일부러 뺐다(`check_data.py`가 강제). 그래서 이 숫자는 "같은 유형을 더 잘 고른다"가 아니라 **"규칙에 없는 유형까지 덮는다"**를 잰다.
 - 원본 5개 시스템만 보면 hybrid(5/6)가 키워드 규칙(6/6)보다 한 쌍 낮다. e03 cache-service에서 memory-leak과 disk-full이 RRF 점수로 정확히 동점이 났고, 동점 처리 규칙(cosine 비교)에서 disk-full이 0.0007 차이로 이겼다(§6.2).
 - 개선 전 코드 → 개선 후 + 키워드 규칙(5 → 6)은 시스템별 선택의 효과다. e03에서 두 시스템의 runbook을 각각 읽는다.
 - 비용은 RAG만 놓고 보면(키워드 → hybrid) +13.9%, 개선 전 코드와 비교하면 +25.9%다. 답변에 runbook이 여러 개 들어가 길어졌기 때문이다. 지연은 중앙값 기준 +0.06s(질의 임베딩)다.
 
-runbook 선택기 단독(selector_cases 40건) top-1 — `eval/results/selector_20261020-160740.json`:
+runbook selector 단독(selector_cases 40건) top-1 — `eval/results/selector_20261020-160740.json`:
 
 | 범주 (건수) | 키워드 규칙 | hybrid | vector |
 |---|---|---|---|
@@ -44,10 +44,10 @@ runbook 선택기 단독(selector_cases 40건) top-1 — `eval/results/selector_
 | 2 | 시스템이 여러 개여도 모든 시스템의 알림을 한 문자열로 합쳐 runbook을 **하나만** 골랐다 (e03: cache-service는 memory-leak, gateway-service는 network-timeout인데 memory-leak 하나만 읽음). | **시스템별 선택**: 장애 시스템마다 따로 고르고, 같은 유형끼리 묶어 한 번씩만 읽는다. 답변에 runbook마다 적용 시스템을 적는다. |
 | 3 | runbook 6종·시스템 6개뿐이라 키워드 표로도 대부분 맞았다 — 개선 효과를 잴 수 없었다. | **데이터 증강**: runbook 14종(기존 6종은 단계 원문 유지 + 증상 섹션), 시스템 15개, 평가셋 selector 40건 / e2e 12건. 표층 누수 검사 포함 (`eval/README_data.md`, 한계는 §7). |
 | 4 | `research` 노드 하나가 모니터링 조회와 runbook 조회를 다 했다. | **서브 에이전트 2개**: `monitoring_agent`(collect_metrics), `runbook_agent`(select_runbooks → read_runbooks). 각자 컴파일된 LangGraph이고 메인 그래프에 노드로 붙는다. |
-| 5 | 계획(plan)에 runbook 조회가 없어서 **모든** 장애 요청이 replan_check에서 "runbook 없음 → 추가 조사" 라운드를 탔다. 재계획이 예외 처리가 아니라 정상 경로였다. | **Dynamic Planning 재정의**: runbook 선택이 계획된 단계가 됐고, replan_check는 "장애 시스템마다 runbook이 붙었는가"를 검사한다. 빠진 시스템이 있을 때만 1회 다시 조사한다 — 선택기가 실패한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다. |
+| 5 | 계획(plan)에 runbook 조회가 없어서 **모든** 장애 요청이 replan_check에서 "runbook 없음 → 추가 조사" 라운드를 탔다. 재계획이 예외 처리가 아니라 정상 경로였다. | **Dynamic Planning 재정의**: runbook 선택이 계획된 단계가 됐고, replan_check는 "장애 시스템마다 runbook이 붙었는가"를 검사한다. 빠진 시스템이 있을 때만 1회 다시 조사한다 — selector가 실패한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다. |
 | 6 | `agent/graph.py` 한 파일에 노드 10개·규칙·상태가 다 있었다. | **모듈화**: `state.py`, `rules.py`, `runbook_selector.py`, `agents/`, `nodes/`(파일 하나에 노드 하나). |
 | 7 | 선택 방식을 바꾸려면 노드 코드를 고쳐야 했다. | **DI**: `SupervisorDeps.runbook_selector`. 서버가 `RUNBOOK_SELECTOR`로 만들어 주입하고, 노드는 `selector.select()`만 부른다. |
-| 8 | 테스트가 없었다. | **pytest 112개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), 선택기(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
+| 8 | 테스트가 없었다. | **pytest 112개**: 규칙, RAG(네트워크 없이, 임베딩 타임아웃·서킷 브레이커 포함), selector(조작한 검색 결과), 노드, 그래프 전체(fake LLM + FakeMCP, Tool 오류·runbook 조회 실패 주입). |
 | 9 | Before/After를 잴 방법이 없었다. | **`eval/run_eval.py`**: selector / threshold / e2e / compare 서브커맨드. 개선 전 서버에도 그대로 돌아간다. |
 | 10 | (실모델에서 발견) 소형 모델(qwen3:0.6b)이 계획에서 시스템명을 틀리게 쓰면, 보정 코드가 그 이름을 '쿼리에서 처음 나온 시스템'으로 바꾸고 중복으로 버려 **그 시스템 조사가 통째로 빠졌다** (e10 reporting-service, e12 recommend-service·gateway-service). | **계획 보정**: 쿼리에 이름이 그대로 나온 시스템은 모델이 빠뜨려도 항상 조사한다(`ollama_llm.py`·`openai_llm.py`의 `plan()`). 모델 판단을 코드로 바로잡는 권위 게이트와 같은 원칙. 재현 테스트 `tests/test_plan_guard.py`. |
 | 11 | 최종안에 서비스 재시작·롤백·세션 강제 종료 같은 조치가 있어도 그대로 내보냈다. | **사람 승인(HITL)**: validate를 통과한 최종안에서 위험 조치 문장을 코드로 찾고(`agent/nodes/approval.py`), 있으면 LangGraph `interrupt()`로 멈춘다. 승인하면 그대로, 거부하면 그 조치를 빼라는 피드백으로 한 번 다시 쓴다(다시 쓴 안도 거부하면 "보류" 표시를 붙여 내보낸다). 요청에 `hitl=true`일 때만 동작한다 — 웹 화면은 켜고, API·평가는 기본으로 끈다. |
@@ -88,7 +88,7 @@ flowchart TB
     Read -. "find_resource_template → read_resource" .-> RunbookRes["MCP Resource<br/>runbook://incident-response/{type}"]
 ```
 
-runbook 선택기(`McpRagSelector.select`)의 판단 순서:
+runbook selector(`McpRagSelector.select`)의 판단 순서:
 
 ```mermaid
 flowchart LR
@@ -133,8 +133,8 @@ flowchart LR
 | `agent/ollama_llm.py`, `agent/openai_llm.py` | 수정 | write의 사실 목록에 runbook별 적용 시스템 표시 |
 | `agent/nodes/approval.py` | 신규 | 사람 승인 노드 — `find_risky_actions`(위험 조치 문장 최대 5개), `interrupt()`, 승인/거부 처리 |
 | `agent/anthropic_llm.py` | 신규 | Claude 백엔드 (`AnthropicFastLLM`·`AnthropicQualityLLM`, 기본 claude-haiku-5-5). 실제 단가로 비용 계산 |
-| `server.py` | 수정 | lifespan에서 선택기 생성·주입(v1이면 만들지 않음), `/health`·metadata에 선택기 정보(v1은 `null`), SSE `subgraphs=True`. 체크포인터·승인 대기 목록, `POST /chat/approve`, `GET /chat/resume`, `LLM_BACKEND=anthropic` |
-| `web_chat.html` | 수정 | `RunbookSelected`(점수·방식·폴백 사유), `RunbookSkipped`(정상/미등록 구분), `RunbookShared`, `RunbookReadFailed`, `ReplanCheck` 목록 target, 헤더에 선택기. 헤더의 "사람 승인" 체크박스, 승인 카드(승인/거부·사유) |
+| `server.py` | 수정 | lifespan에서 selector 생성·주입(v1이면 만들지 않음), `/health`·metadata에 selector 정보(v1은 `null`), SSE `subgraphs=True`. 체크포인터·승인 대기 목록, `POST /chat/approve`, `GET /chat/resume`, `LLM_BACKEND=anthropic` |
+| `web_chat.html` | 수정 | `RunbookSelected`(점수·방식·폴백 사유), `RunbookSkipped`(정상/미등록 구분), `RunbookShared`, `RunbookReadFailed`, `ReplanCheck` 목록 target, 헤더에 selector. 헤더의 "사람 승인" 체크박스, 승인 카드(승인/거부·사유) |
 | `web_demo_server.py` | 수정 | `/chat/resume`·`/chat/approve` 중계, 쿼리 파라미터 그대로 전달 |
 | `data/runbooks/*.md`, `data/monitoring.json` | 수정·신규 | runbook 14종, 시스템 15개 |
 | `eval/*` | 신규 | 평가셋, `check_data.py`, `run_eval.py`, `results/` |
@@ -147,12 +147,12 @@ flowchart LR
 - **검색은 Tool, 문서는 Resource.** runbook 본문은 URI로 식별되는 정적 문서라 Resource 그대로 두고, "증상 문장 → 후보 순위"는 질의마다 결과가 달라지는 계산이라 Tool로 냈다. 에이전트는 `find_tool`로 Tool을 가진 서버를 찾아 부른다(서버 이름 하드코딩 없음).
 - **청크 = 증상 bullet 하나.** runbook 전체를 한 벡터로 만들면 조치 절차 문장이 섞여 유사도가 흐려진다. 증상 bullet마다 청크를 만들고 유형 점수는 청크 최댓값을 쓴다 — bullet 하나만 딱 맞아도 그 runbook이 올라온다.
 - **hybrid(RRF)를 기본값으로.** 이번 평가셋에서는 vector 단독이 더 높았다(90.0% vs 82.5%, §6.1). 그래도 기본값을 hybrid로 둔 이유: ① `x509`, `ENOTFOUND`, `429` 같은 정확한 토큰은 BM25가 잡는다, ② 평가셋 40건을 보고 기본값을 바꾸면 그 자체가 test set 튜닝이다. `RUNBOOK_SELECTOR=vector`로 바로 바꿀 수 있다.
-- **임베딩 서버가 죽으면 BM25 순위로 계속 고른다.** search_runbook은 임베딩이 안 되면 BM25만으로 순위를 내고 `degraded=True`를 붙인다. 선택기는 그 1위를 그대로 쓴다(`method=bm25-degraded`). 키워드 규칙으로 내려가지 않는 이유는 숫자다 — 40건에서 BM25 단독 25/40, 키워드 규칙 12/40. 결과가 아예 없을 때만 키워드 규칙을 쓴다.
+- **임베딩 서버가 죽으면 BM25 순위로 계속 고른다.** search_runbook은 임베딩이 안 되면 BM25만으로 순위를 내고 `degraded=True`를 붙인다. selector는 그 1위를 그대로 쓴다(`method=bm25-degraded`). 키워드 규칙으로 내려가지 않는 이유는 숫자다 — 40건에서 BM25 단독 25/40, 키워드 규칙 12/40. 결과가 아예 없을 때만 키워드 규칙을 쓴다.
 - **임베딩 서버가 멈춰도 진단은 멈추지 않는다.** 질의 임베딩은 5s 타임아웃으로 부르고(콜드 로딩 실측 1.3s), 한 번 실패하면 30s 동안은 Ollama를 부르지 않고 바로 BM25로 간다(서킷 브레이커). 응답 없는 TCP 서버(blackhole)를 `OLLAMA_URL`로 걸고 요청 두 개를 동시에 보낸 실측: 2개 시스템 진단 6.19s, 2초 뒤 보낸 모니터링만 필요한 요청 4.19s, 그다음 요청 0.74s. 수정 전에는 httpx 기본 60s 타임아웃이 요청마다 반복돼 각각 121s / 119s였다. 남은 대가: MCPClient가 호출 하나가 끝날 때까지 lock을 잡는 구조(원본 그대로)라서, 첫 5s 동안은 다른 요청의 MCP 호출도 기다린다.
 - **검색 텍스트에 사용자 질의를 넣지 않는다.** 40건에서 질의를 빼는 쪽이 vector(36 vs 34)·bm25(25 vs 24) top-1과 세 방식 모두의 top-3에서 같거나 나았다. hybrid top-1만 질의를 넣을 때 2건 높았다(35 vs 33). 결정적인 이유는 e2e다 — 질의 하나가 여러 시스템을 함께 말하면("cache-service랑 gateway-service 둘 다 …") 다른 시스템 이야기가 검색 텍스트에 섞인다. 모니터링 알림은 시스템마다 따로 있으므로 알림만 쓴다.
 - **임계값은 cosine에만 건다.** hybrid 점수(RRF)는 순위만 반영해 0.016~0.033 사이라 절대값 의미가 없다. BM25 점수는 질의 안의 최댓값으로 나눠서 1위가 늘 1.0이다 — 확신도로 읽히면 안 되므로 bm25 결과에는 `Selection.score`를 남기지 않는다(UI에도 점수 없음).
 - **RAG_MIN_SCORE = 0.52 (보수적 하한).** selector_cases 앞 10건(dev split)만 봤다. 정답·오답 점수가 겹친다(오답 s10 0.566 > 정답 s05 0.543). dev 정확도를 최대로 만드는 구간(0.567~0.593)은 dev 1건을 고치려고 dev의 30%를 키워드 규칙으로 넘기는 값이라 쓰지 않았고, dev 정답 최저점(0.543)보다 조금 낮은 0.52로 "명백히 관련 없는 입력"만 거른다. 사후 확인(선택에는 쓰지 않음): 0.58로 했다면 dev는 9/10으로 오르지만 나머지 30건은 25 → 22로 떨어진다. bge-m3 cosine이 0.51~0.71에 몰려 있어 점수만으로 맞고 틀림을 가르기 어렵다는 뜻이다.
-- **두 단계 폴백.** 선택기 안의 폴백은 "답은 있지만 확신이 없을 때"다: 낮은 점수·무매칭 → 키워드 규칙, 임베딩 장애 → BM25 순위. 그래프 차원의 재계획(replan_check)은 "runbook을 못 붙였을 때"다: 선택기 자체가 실패(Tool 오류)한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다 — RAG가 고른 유형을 조회 오류 한 번 때문에 버리지 않는다. 어느 경우든 진단이 멈추지 않는다.
+- **두 단계 폴백.** selector 안의 폴백은 "답은 있지만 확신이 없을 때"다: 낮은 점수·무매칭 → 키워드 규칙, 임베딩 장애 → BM25 순위. 그래프 차원의 재계획(replan_check)은 "runbook을 못 붙였을 때"다: selector 자체가 실패(Tool 오류)한 시스템은 키워드 규칙으로 다시 고르고, 조회만 실패한 시스템은 이미 고른 유형을 다시 읽는다 — RAG가 고른 유형을 조회 오류 한 번 때문에 버리지 않는다. 어느 경우든 진단이 멈추지 않는다.
 - **서브 에이전트를 서브그래프로.** 메인 그래프 입장에서 "모니터링 담당", "runbook 담당" 노드 두 개로 보이고, 안쪽 단계를 늘려도 메인 그래프는 바뀌지 않는다. 상태 스키마를 AgentState로 공유해서 변환 코드가 없다. 대가는 스트리밍이 `(namespace, mode, payload)` 3-튜플로 바뀐 것 정도다.
 - **공정한 지연 비교.** 개선 전 research는 태스크마다 0.35s를 일부러 쉬었다(병렬 효과 실측용). runbook 조회에도 같은 지연을 그대로 둬서, 지연 차이가 "sleep을 뺀 효과"가 아니라 RAG 검색 비용만 반영되게 했다.
 - **unknown 시스템은 runbook을 고르지 않는다.** 모니터링에 없는 시스템("not found" 알림)으로 runbook을 고르면 개선 전처럼 db-down이 나온다. 근거가 없으므로 선택하지 않고, 화면에는 "정상"이 아니라 "모니터링에 없는 시스템(foo-service) — runbook 생략"으로 따로 알린다.
@@ -168,7 +168,7 @@ flowchart LR
 # 평가 데이터 정합성 검사
 .venv/bin/python eval/tools/check_data.py
 
-# 선택기 단독 평가 (Ollama + bge-m3 필요, 없으면 degraded로 기록됨)
+# selector 단독 평가 (Ollama + bge-m3 필요, 없으면 degraded로 기록됨)
 .venv/bin/python eval/run_eval.py selector
 .venv/bin/python eval/run_eval.py threshold --sweep    # RAG_MIN_SCORE 근거 (bge-m3 없으면 안내 후 종료)
 
@@ -184,7 +184,7 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 | `RAG_MIN_SCORE` | `0.52` | RAG top-1 cosine이 이보다 낮으면 키워드 규칙으로 폴백 |
 | `RAG_EMBED_MODEL` | `bge-m3` | Ollama 임베딩 모델 (캐시 파일도 모델별) |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | 임베딩용 Ollama 주소 |
-| `SUPERVISOR_VERSION` | `v2` | `v1`이면 legacy 선형 파이프라인 (선택기를 만들지 않고 `/health`의 `runbook_selector`는 `null`) |
+| `SUPERVISOR_VERSION` | `v2` | `v1`이면 legacy 선형 파이프라인 (selector를 만들지 않고 `/health`의 `runbook_selector`는 `null`) |
 | `LLM_BACKEND` | `fake` | `fake` / `ollama` / `openai` / `anthropic` |
 | `ANTHROPIC_API_KEY` | (없음) | `anthropic`일 때 필요. `.env`에 넣는다 |
 | `ANTHROPIC_FAST_MODEL`, `ANTHROPIC_QUALITY_MODEL` | `claude-haiku-5-5` | Claude 모델 |
@@ -194,7 +194,7 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 
 ## 6. 결과
 
-### 6.1 runbook 선택기 단독 — `eval/results/selector_20261020-160740.json`
+### 6.1 runbook selector 단독 — `eval/results/selector_20261020-160740.json`
 
 검색 텍스트 = 알림만, min_score = 0.52, 임베딩 = bge-m3. 지연은 MCP 왕복을 뺀 `RunbookIndex.search` 시간이다(방식마다 질의 캐시가 빈 새 인덱스로 측정, 1회 실행).
 
@@ -267,8 +267,8 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 읽는 법:
 - **원본/신규 시스템 분리**: "적중 쌍"은 그 시스템의 정답 유형을 읽었는지로 센다. 원본 시스템은 auth·payments·cache·gateway·log-service, 신규는 증강한 9개다(`run_eval.py`의 `BASE_SYSTEMS`).
 - **before → keyword (5 → 6)**: 같은 키워드 규칙이라도 시스템별로 고르면 e03(memory-leak + network-timeout)을 둘 다 맞힌다. 신규 시스템은 둘 다 0/11이다 — 규칙이 출력할 수 없는 유형이기 때문이다.
-- **keyword → hybrid (6 → 16)**: 같은 코드·데이터에서 선택기만 바꿨다. 유일한 오답은 e03의 cache-service(`memory usage climbing … heap near limit`)를 disk-full로 고른 것이다. 이건 **RRF 정확한 동점**이다 — disk-full은 vector 1위(0.6052)·BM25 2위, memory-leak은 vector 2위(0.6045)·BM25 1위라 둘 다 1/61 + 1/62 = 0.032522이고, 동점 처리 규칙(`rag/index.py`: 점수 → cosine → 이름 순)에서 cosine 0.0007 차이로 disk-full이 이겼다. selector의 s30은 같은 동점이 반대로(memory-leak 0.6482 vs disk-full 0.629) 갈려 맞힌 사례다. 즉 e2e 17쌍 중 1쌍과 selector 1건이 동점 처리 규칙에 달려 있다 — 깨지기 쉬운 결과다.
-- **재계획 비율 1.0 → 0.0은 개선 수치가 아니다.** 개선 전에는 계획에 runbook 조회가 없어서 모든 장애 요청이 재계획 라운드로 runbook을 가져왔다(12/12). 개선 후에는 runbook 선택이 계획된 단계이고 재계획은 실패 때만 일어난다. 재계획의 정의가 바뀐 것이다. 실패 경로는 테스트로 확인한다 — `tests/test_graph_fake.py`의 `test_replan_falls_back_to_keyword_when_selector_fails`(선택기 오류 → 키워드 재선택), `test_failed_read_is_retried_not_reselected`(조회 실패 → 같은 유형 재조회).
+- **keyword → hybrid (6 → 16)**: 같은 코드·데이터에서 selector만 바꿨다. 유일한 오답은 e03의 cache-service(`memory usage climbing … heap near limit`)를 disk-full로 고른 것이다. 이건 **RRF 정확한 동점**이다 — disk-full은 vector 1위(0.6052)·BM25 2위, memory-leak은 vector 2위(0.6045)·BM25 1위라 둘 다 1/61 + 1/62 = 0.032522이고, 동점 처리 규칙(`rag/index.py`: 점수 → cosine → 이름 순)에서 cosine 0.0007 차이로 disk-full이 이겼다. selector의 s30은 같은 동점이 반대로(memory-leak 0.6482 vs disk-full 0.629) 갈려 맞힌 사례다. 즉 e2e 17쌍 중 1쌍과 selector 1건이 동점 처리 규칙에 달려 있다 — 깨지기 쉬운 결과다.
+- **재계획 비율 1.0 → 0.0은 개선 수치가 아니다.** 개선 전에는 계획에 runbook 조회가 없어서 모든 장애 요청이 재계획 라운드로 runbook을 가져왔다(12/12). 개선 후에는 runbook 선택이 계획된 단계이고 재계획은 실패 때만 일어난다. 재계획의 정의가 바뀐 것이다. 실패 경로는 테스트로 확인한다 — `tests/test_graph_fake.py`의 `test_replan_falls_back_to_keyword_when_selector_fails`(selector 오류 → 키워드 재선택), `test_failed_read_is_retried_not_reselected`(조회 실패 → 같은 유형 재조회).
 - **지연**: 중앙값 기준 keyword → hybrid +0.058s. 시스템마다 search_runbook(질의 임베딩 ~30ms + MCP 왕복)이 붙는다. runbook 조회는 병렬이라 유형이 늘어도 0.35s 한 번이다. 최댓값은 세 서버 모두 e01이다 — MCPClient가 프로세스 첫 모니터링 호출에서 일부러 던지는 timeout(Wave 9 데모)과 재시도가 들어 있다. 12건짜리 p95는 사실상 이 한 건이라 중앙값·최댓값으로 바꿨다. 1회 실행이므로 0.1s 미만 차이에는 의미를 두지 않는다.
 - **비용**: fake LLM 비용은 문자열 길이로 계산한다. RAG만의 효과(keyword → hybrid)는 +13.9%, 개선 전 코드 대비 +25.9%다. 답변이 runbook을 전부 담으면서 길어졌다. 실모델에서는 프롬프트에 runbook 본문이 여러 개 들어가므로 같은 방향으로 늘어난다.
 - **불필요한 runbook**: keyword가 9개로 가장 많다. 시스템마다 고르면서 규칙이 모르는 유형마다 db-down을 하나씩 읽기 때문이다.
@@ -316,7 +316,7 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 | `e2e_before-ollama_20261020-221836.json` | 개선 전 | 4/17 | 5 |
 | `e2e_hybrid-ollama_20261020-173726.json` | 개선 후, **계획 보정 전** | 12/17 | 1 |
 
-- 개선 후 결과에서 e10·e12는 선택기가 고른 시스템이 하나뿐이었다(`selections`에 inventory-service, ledger-service만 있음). 같은 알림으로 선택기만 다시 돌리면 다섯 시스템 모두 정답이 나와서, 선택이 아니라 **계획 단계에서 시스템이 빠진 것**으로 좁혔다 → §1의 10번 변경.
+- 개선 후 결과에서 e10·e12는 selector가 고른 시스템이 하나뿐이었다(`selections`에 inventory-service, ledger-service만 있음). 같은 알림으로 selector만 다시 돌리면 다섯 시스템 모두 정답이 나와서, 선택이 아니라 **계획 단계에서 시스템이 빠진 것**으로 좁혔다 → §1의 10번 변경.
 - 계획 보정 후 재측정 결과는 위 표다.
 
 ### 6.5 실모델 전체 평가 (Claude Haiku 5.5)
@@ -352,7 +352,7 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 | 범위를 벗어난 수치·사실 (건) | 1 | 0 |
 
 - 개선 전에도 Haiku는 알림 문구만 보고 장애 유형을 대부분 맞혔다(심사 기준 17/17). 차이는 **구체 절차**다. 개선 전 답변은 `pg_stat_activity`·`KILL`, `openssl` 확인, 컨슈머 증설 같은 runbook 단계가 빠져 4점이 많았고, 개선 후에는 runbook 5단계를 그대로 따라 11/12가 5점이다.
-- 유일한 개선 후 4점은 e03 cache-service — 선택기가 disk-full runbook을 붙인 RRF 동점 사례(§6.2)라 답변에 "디스크 용량 부족 runbook"이 섞였다.
+- 유일한 개선 후 4점은 e03 cache-service — selector가 disk-full runbook을 붙인 RRF 동점 사례(§6.2)라 답변에 "디스크 용량 부족 runbook"이 섞였다.
 - 첫 채점에서는 스크립트가 모니터링 기준값(`cpu_base`)을 읽지 못해 심사 모델이 모든 수치를 "지어냈다"고 깎았다(평균 2.08 → 2.92). Tool이 기준값에 흔들림을 더한다는 점을 반영해 범위로 넘기도록 고친 뒤 다시 돌린 결과가 위 표다.
 - 심사는 1회, 심사 기준은 직접 만들었고 사람 평가와 대조하지 않았다(§7).
 
@@ -363,7 +363,7 @@ LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app 
 - **설계 선택 일부는 평가셋을 보고 했다.** 임계값은 dev 10건만 봤지만, "검색 텍스트에 질의를 넣을지"는 40건 전체를 보고 정했다. 나머지 30건이 진짜 held-out은 아니다.
 - **임계값의 효과가 거의 없다.** bge-m3 cosine이 0.51~0.71에 몰려 있어 점수로 맞고 틀림을 가르지 못한다. 지금의 0.52는 안전망일 뿐이고, 의미 있는 폴백을 원하면 reranker나 "1위와 2위 점수 차" 같은 다른 신호가 필요하다.
 - **hybrid가 vector보다 낮게 나왔다.** BM25가 약한 신호(62.5%)인데 RRF는 두 순위를 같은 무게로 합친다. hybrid가 vector와 갈린 keyword 범주 오답 3건 중 2건은 runbook의 구분용 부정 문장("CPU는 정상")에 BM25가 걸린 것이다 — 부정 문장을 BM25 청크에서 빼거나, 가중 RRF를 쓰는 방법이 있지만 데이터를 더 모은 뒤에 정할 일이다. RRF 동점(e03 cache-service, s30)은 cosine으로 갈리므로 결과가 깨지기 쉽다.
-- **임베딩 비용·지연.** 질의마다 Ollama 호출(~30ms)이 필요하고, 프로세스의 첫 검색은 청크 124개 임베딩 + 모델 로딩으로 수 초가 걸린다(디스크 캐시가 있으면 모델 로딩 1.3s 정도). Ollama가 죽으면 search_runbook이 BM25만으로 순위를 내고 선택기는 그 1위를 쓴다 — BM25 단독은 40건에서 62.5%라 hybrid(82.5%)보다 낮다.
+- **임베딩 비용·지연.** 질의마다 Ollama 호출(~30ms)이 필요하고, 프로세스의 첫 검색은 청크 124개 임베딩 + 모델 로딩으로 수 초가 걸린다(디스크 캐시가 있으면 모델 로딩 1.3s 정도). Ollama가 죽으면 search_runbook이 BM25만으로 순위를 내고 selector는 그 1위를 쓴다 — BM25 단독은 40건에서 62.5%라 hybrid(82.5%)보다 낮다.
 - **MCPClient lock.** 원본 MCPClient는 호출 하나가 끝날 때까지 lock을 잡는다. 시스템별 search_runbook을 `asyncio.gather`로 동시에 불러도 실제로는 한 줄로 서고, 검색이 느려지면 같은 서버의 다른 요청도 기다린다. 질의 타임아웃(5s)과 서킷 브레이커로 최악을 5s 정도로 묶었을 뿐 구조는 그대로다.
 - **BM25 토크나이저가 단순하다.** 형태소 분석 없이 한글 어절 + 글자 bigram이다. 조사 붙은 단어는 bigram으로 어느 정도 잡지만 동의어·약어는 못 잡는다.
 - **벡터 DB 없이 numpy 내적.** runbook 14종·청크 124개라 전수 비교로 충분하다. 문서가 수천 개로 늘면 ANN 인덱스(벡터 DB)가 필요하다. MCP 서버가 뜰 때 인덱스를 한 번 만들므로 runbook을 고치면 서버를 재시작해야 한다.

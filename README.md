@@ -14,7 +14,7 @@ Base(`all_total_vue`)는 장애 시스템의 모니터링 알림 문구를 **키
 | 데이터 | runbook 6종, 시스템 6개 | runbook 14종(증상 항목 추가), 시스템 15개, 평가셋 52건 |
 | 조사 단계 | `research` 노드 하나 | 서브 에이전트 2개 — `monitoring_agent`, `runbook_agent`(컴파일된 서브그래프) |
 | 재계획 | runbook이 없으면 항상 1회 | 선택·조회에 실패한 시스템만 1회 재시도 |
-| 구조 | `graph.py` 한 파일 | `agent/nodes/`, `agent/agents/`, `agent/rules.py`, `rag/` 로 분리, 선택기는 의존성 주입 |
+| 구조 | `graph.py` 한 파일 | `agent/nodes/`, `agent/agents/`, `agent/rules.py`, `rag/` 로 분리, selector는 의존성 주입 |
 | 계획 보정 | 소형 모델이 시스템명을 틀리면 그 시스템 조사가 빠짐 | 질의에 이름이 나온 시스템은 항상 조사 (실모델 평가에서 발견) |
 | 사람 승인 | 재시작·롤백 같은 조치도 그대로 내보냄 | 위험 조치가 든 최종안은 `interrupt()`로 멈추고 담당자 승인/거부 (거부하면 그 조치를 빼고 다시 작성) |
 | LLM 백엔드 | fake · Ollama · OpenAI | + Claude(`LLM_BACKEND=anthropic`, Haiku 5.5) — 구조화 출력·토큰 스트리밍 |
@@ -41,7 +41,7 @@ e2e 12건(정답 (시스템, runbook) 쌍 17개), fake LLM(결정론), 세 서�
 답변 품질(같은 Haiku 답변 24건, Sonnet 5.5가 정답 runbook 기준 5점 채점): 평균 4.33 → **4.92**, 5점 4건 → 11건.
 
 
-runbook 선택기 단독(40건) top-1: 키워드 규칙 30.0% · BM25 62.5% · **hybrid 82.5%** · vector 90.0%.
+runbook selector 단독(40건) top-1: 키워드 규칙 30.0% · BM25 62.5% · **hybrid 82.5%** · vector 90.0%.
 키워드 규칙의 30%는 평가셋을 "규칙이 약한 경우 70%"로 설계한 값이라 규칙의 실제 정확도가 아니다.
 해석·한계(vector가 hybrid보다 높은 이유, 동점 사례, 데이터 합성의 한계)는 [doc/IMPROVEMENTS.md](doc/IMPROVEMENTS.md).
 
@@ -72,7 +72,7 @@ API로는 `POST /chat`에 `"hitl": true` → `status=approval_required`와 `run_
 ```bash
 .venv/bin/python -m pytest -q                       # 112 passed, Ollama 불필요
 .venv/bin/python eval/tools/check_data.py           # 평가 데이터 정합성·누수 검사
-.venv/bin/python eval/run_eval.py selector          # 선택기 단독 (bge-m3 필요)
+.venv/bin/python eval/run_eval.py selector          # selector 단독 (bge-m3 필요)
 LLM_BACKEND=fake RUNBOOK_SELECTOR=hybrid .venv/bin/python -m uvicorn server:app --port 8100
 .venv/bin/python eval/run_eval.py e2e --base-url http://127.0.0.1:8100 --label hybrid-fake
 .venv/bin/python eval/run_eval.py compare eval/results/e2e_*.json

@@ -1,6 +1,6 @@
 # 평가 데이터 설명 (Build-A: 데이터 증강)
 
-RAG runbook 선택기를 개선 전(키워드 규칙)과 비교하려고 만든 데이터다.
+RAG runbook selector를 개선 전(키워드 규칙)과 비교하려고 만든 데이터다.
 검증은 `.venv/bin/python eval/tools/check_data.py` 한 번으로 끝난다 (통과하면 `PASS`).
 
 ## 1. 무엇을 만들었나
@@ -9,7 +9,7 @@ RAG runbook 선택기를 개선 전(키워드 규칙)과 비교하려고 만든 
 |---|---|---|
 | `data/runbooks/*.md` | 기존 6종을 `## 증상` / `## 조치 절차` 구조로 재작성 + 신규 8종 추가 | 14종 |
 | `data/monitoring.json` | 기존 6개 그대로 + 신규 시스템 9개 | 15개 |
-| `eval/selector_cases.jsonl` | runbook 선택기 단독 평가 (입력: status, alerts, query) | 40건 |
+| `eval/selector_cases.jsonl` | runbook selector 단독 평가 (입력: status, alerts, query) | 40건 |
 | `eval/e2e_cases.jsonl` | 에이전트 전체 흐름 평가 (시스템별 정답 유형) | 12건 |
 | `eval/tools/check_data.py` | 위 데이터의 형식·분포·누수·규칙 sanity 검사 | - |
 

@@ -182,7 +182,7 @@ runbook마다 `## 증상` 항목을 **한 줄씩 청크**로 쪼갠다(제목 + 
 
 ---
 
-## 6. 선택기와 폴백 (`agent/runbook_selector.py`)
+## 6. selector와 폴백 (`agent/runbook_selector.py`)
 
 | 클래스 | 하는 일 |
 |---|---|
@@ -202,10 +202,10 @@ runbook마다 `## 증상` 항목을 **한 줄씩 청크**로 쪼갠다(제목 + 
 RAG 1위를 고를 때 `margin`(1위 cosine − 나머지 중 최고 cosine)도 기록한다. 0.01보다 작으면 화면에 "근소"로 표시만 하고 선택은 바꾸지 않는다. e2e 유일한 오답(e03 cache-service, 0.0007)이 여기에 걸린다.
 
 ### 의존성 주입 (DI)
-- `server.py`의 `lifespan`에서 `build_selector(mcp, RUNBOOK_SELECTOR)`로 선택기를 만든다.
+- `server.py`의 `lifespan`에서 `build_selector(mcp, RUNBOOK_SELECTOR)`로 selector를 만든다.
 - 그걸 `SupervisorDeps.runbook_selector`에 넣는다(`agent/deps.py`).
-- 노드는 `functools.partial(fn, deps=deps)`로 deps를 받는다. runbook_agent는 `deps.runbook_selector.select()`만 부르고, 어떤 선택기인지 모른다.
-- 그래서 `RUNBOOK_SELECTOR=keyword`로 켜면 같은 코드로 개선 전 방식을 재현할 수 있고, 테스트에서는 가짜 선택기를 넣을 수 있다.
+- 노드는 `functools.partial(fn, deps=deps)`로 deps를 받는다. runbook_agent는 `deps.runbook_selector.select()`만 부르고, 어떤 selector인지 모른다.
+- 그래서 `RUNBOOK_SELECTOR=keyword`로 켜면 같은 코드로 개선 전 방식을 재현할 수 있고, 테스트에서는 가짜 selector를 넣을 수 있다.
 
 ---
 
@@ -278,15 +278,15 @@ if target in seen: continue                                            # 이미 
 | 구분 | 파일 |
 |---|---|
 | **새로 만든 것** | `rag/` (index · bm25 · embedder), `agent/runbook_selector.py`, `agent/agents/` (monitoring_agent · runbook_agent), `agent/nodes/` (노드 파일 10개, approval 포함), `agent/anthropic_llm.py`, `agent/state.py`, `agent/rules.py`, `tests/`, `eval/` (`run_eval.py`, `tools/judge_answers.py`, `base_patch/` 등), `sh/run_demo.sh`, `sh/run_agent_anthropic.sh`, `doc/captures/` |
-| **고친 것** | `agent/graph.py`(조립만), `mcp_server.py`(+`search_runbook`), `agent/mcp_client.py`(+`find_tool`), `agent/deps.py`(+`runbook_selector`), `web_demo_server.py`(포트 환경변수, 승인 중계), `server.py`(선택기 주입, `/health`·메타데이터, 서브그래프 스트리밍, 승인 대기·재개, Claude 백엔드), `agent/ollama_llm.py`·`openai_llm.py`·`fake_llm.py`(계획 보정, 답변에 적용 시스템 표시), `web_chat.html`(새 단계 표시, '근소' 표시, 승인 카드), `requirements.txt`(+`anthropic`), `.env.example`(+`ANTHROPIC_API_KEY` 자리), `data/` (runbook 14종, 시스템 15개) |
+| **고친 것** | `agent/graph.py`(조립만), `mcp_server.py`(+`search_runbook`), `agent/mcp_client.py`(+`find_tool`), `agent/deps.py`(+`runbook_selector`), `web_demo_server.py`(포트 환경변수, 승인 중계), `server.py`(selector 주입, `/health`·메타데이터, 서브그래프 스트리밍, 승인 대기·재개, Claude 백엔드), `agent/ollama_llm.py`·`openai_llm.py`·`fake_llm.py`(계획 보정, 답변에 적용 시스템 표시), `web_chat.html`(새 단계 표시, '근소' 표시, 승인 카드), `requirements.txt`(+`anthropic`), `.env.example`(+`ANTHROPIC_API_KEY` 자리), `data/` (runbook 14종, 시스템 15개) |
 | **그대로** | `agent/retry.py`, `agent/session_store.py`, `agent/supervisor_v1.py`, `mcp_server_docs.py` |
 
 ---
 
 ## 10. 테스트와 평가는 무엇을 하나
 
-- **`tests/`** (pytest 112개, Ollama 없이 19초): 가짜 MCP · 가짜 LLM을 deps에 주입해서 노드, 선택기 판단 순서, RAG(가짜 임베딩), 그래프 전체 흐름, 계획 보정, 사람 승인을 검사한다.
-- **`eval/run_eval.py selector`**: 평가셋 40건으로 선택기만 비교 (키워드 30% · BM25 62.5% · hybrid 82.5% · vector 90%).
+- **`tests/`** (pytest 112개, Ollama 없이 19초): 가짜 MCP · 가짜 LLM을 deps에 주입해서 노드, selector 판단 순서, RAG(가짜 임베딩), 그래프 전체 흐름, 계획 보정, 사람 승인을 검사한다.
+- **`eval/run_eval.py selector`**: 평가셋 40건으로 selector만 비교 (키워드 30% · BM25 62.5% · hybrid 82.5% · vector 90%).
 - **`eval/run_eval.py e2e`**: 서버에 실제로 12건을 보내 정답 runbook을 읽었는지 센다 (5/17 → 16/17 — fake, qwen3:0.6b, Claude Haiku 모두 같음).
 - **`eval/tools/check_data.py`**: 평가 데이터가 runbook 문장을 베끼지 않았는지, 범주가 맞는지 검사한다.
 - **`eval/tools/judge_answers.py`**: e2e 결과 파일의 답변을 Sonnet 5.5가 정답 runbook·모니터링 범위 기준으로 5점 채점한다 (Haiku 답변 4.33 → 4.92).
@@ -312,13 +312,13 @@ if target in seen: continue                                            # 이미 
 모니터링과 매뉴얼 선택이 서로 모르는 채로 바뀔 수 있다. 예를 들어 runbook_agent에 리랭커를 붙여도 메인 그래프는 그대로다. LangSmith에서도 따로 묶여 보여 어디서 시간이 드는지 바로 보인다.
 
 **Q. 의존성 주입을 어디에 썼나?**
-선택기를 `SupervisorDeps`에 넣어 노드에 주입했다. 환경변수 하나로 키워드/RAG를 바꾸고, 테스트에서는 가짜 선택기와 가짜 MCP를 넣는다.
+selector를 `SupervisorDeps`에 넣어 노드에 주입했다. 환경변수 하나로 키워드/RAG를 바꾸고, 테스트에서는 가짜 selector와 가짜 MCP를 넣는다.
 
 **Q. Ollama가 죽으면?**
 BM25만으로 계속 고른다(`bm25-degraded`). 한 번 실패하면 30초 동안은 Ollama를 부르지 않아 요청마다 기다리지 않는다.
 
 **Q. 5/17 → 16/17은 공정한 비교인가?**
-세 서버 모두 같은 증강 데이터로 돌렸다. 선택기만 바꾼 효과는 6 → 16이다. 늘어난 10쌍은 모두 신규 시스템에서 나왔고, 키워드 규칙 30%는 평가셋을 그렇게 설계한 값이라고 밝혔다.
+세 서버 모두 같은 증강 데이터로 돌렸다. selector만 바꾼 효과는 6 → 16이다. 늘어난 10쌍은 모두 신규 시스템에서 나왔고, 키워드 규칙 30%는 평가셋을 그렇게 설계한 값이라고 밝혔다.
 
 **Q. 답변 품질은 어떻게 쟀나?**
 e2e는 정답 매뉴얼을 읽었는지만 센다. 그래서 같은 Haiku 답변 24건을 Sonnet이 정답 매뉴얼 기준으로 5점 채점했다(어느 버전인지 숨김). 4.33 → 4.92. 개선 전에도 유형은 대부분 맞혔지만 매뉴얼의 구체 절차가 빠졌다. 심사는 1회이고 사람 평가와 대조하지 않았다.
